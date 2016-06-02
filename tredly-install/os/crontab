@@ -1,0 +1,8 @@
+SHELL=/bin/sh
+PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
+
+# Run ZFS scrub every Sunday at 2am
+0 2 * * 0 /sbin/zpool scrub zroot
+
+# Delete all mail for root every 10 minutes
+*/10 * * * * cat /dev/null > /var/mail/root

@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+. /usr/local/etc/ipfw.vars
+
+# Configure NAT and port redirection on the Tredly-Host external IP
+ipfw -q nat 1 config ip $eip same_ports log \
+redirect_port tcp $p7ip:80 80 `# host` \
+redirect_port tcp $p7ip:443 443 `# host`

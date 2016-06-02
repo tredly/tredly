@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+
+# commands require running as root
+cmn_assert_running_as_root
+
+# Sanity checks - make sure packages we need are installed
+check_for_zfs
+check_for_ipfw
+
+show_help "Available Commands:
+
+    partition
+    ---------
+    Description:
+        Destroy a partition and all data held within. This includes all
+        containers.
+
+    Examples:
+        $(basename "$0") destroy partition customer1
+
+    partitions
+    ---------
+    Description:
+        Destroys all partitions on this host, and all data held within.
+
+    Examples:
+        $(basename "$0") destroy partitions
+"
+
+case "${_SUBCOMMANDS[0]}" in
+    partition)
+        # validation
+        if [[ ${#_SUBCOMMANDS[@]} -gt 2 ]]; then
+            exit_with_error "Too many arguments received."
+        fi
+
+        partition_destroy "${_SUBCOMMANDS[1]}" "true"
+
+    ;;
+    partitions)
+        # validation
+        if [[ ${#_SUBCOMMANDS[@]} -gt 1 ]]; then
+            exit_with_error "Too many arguments received."
+        fi
+
+        partition_destroy_all
+    ;;
+    *)
+        exit_with_error "Unknown destroy command '${_SUBCOMMANDS[0]}'"
+    ;;
+esac

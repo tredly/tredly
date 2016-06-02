@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+
+# commands require running as root
+cmn_assert_running_as_root
+
+show_help "Available Commands:
+    container
+    ---------
+    Description:
+        Creates a container from the Tredlyfile in the current directory.
+
+    Options:
+        --path=          Provide an alternate path to a Tredlyfile
+        --containerName= Override the container name
+        --partition=     Place this container within the given partition
+        --ip4_addr=      Manually specify the networking details for this
+                         container. Format: <interface>|<ip4 address>/<cidr>
+
+    Examples:
+        $(basename "$0") create container
+        $(basename "$0") create container --containerName=mycontainer
+        $(basename "$0") create container --ip4_addr=em0|192.168.0.5/24
+        $(basename "$0") create container --partition=customer1
+        
+    partition
+    ---------
+    Description:
+        Creates a partition with the given details. Partitions are used
+        to group containers and also to limit their resource usage.
+
+    Options:
+        CPU=            Set CPU limit
+        HDD=            Set Disk limit
+        RAM=            Set RAM limit
+        ipv4whitelist=  Set new ipv4 whitelist (yet to be implemented)
+
+    Examples:
+        $(basename "$0") create partiton customer1
+        $(basename "$0") create partiton customer2 CPU=1 RAM=1G
+        $(basename "$0") create partiton customer2 CPU=1 HDD=20G RAM=1G
+"
+    
+
+case "${_SUBCOMMANDS[0]}" in
+    container)
+        tredly-build create ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+    ;;
+    partition)
+        tredly-host create ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+    ;;
+    *)
+        exit_with_error "Unknown create command \"${_SUBCOMMANDS[0]}\""
+    ;;
+esac

@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+
+show_help "Available Commands:
+    container
+    ---------
+    Description:
+        Modifies an existing container with the given options.
+
+    Options:
+        CPU=            Set new CPU limit
+        HDD=            Set new disk limit
+        RAM=            Set new RAM limit
+        ipv4Whitelist=  Set new ipv4 whitelist
+
+    Examples:
+        $(basename "$0") modify container x5jR3nK1 RAM=1G
+        $(basename "$0") modify container x5jR3nK1 CPU=1 HDD=20G RAM=1G
+        $(basename "$0") modify container x5jR3nK1 ipv4Whitelist="10.0.0.0/16,10.1.0.1"
+
+    partition
+    ---------
+    Description:
+        Modifies an existing partition with the given options.
+
+    Options:
+        partitionName=  Set new parition name
+        CPU=            Set new CPU limit
+        HDD=            Set new disk limit
+        RAM=            Set new RAM limit
+        ipv4Whitelist=  Set new ipv4 whitelist
+
+    Examples:
+        $(basename "$0") modify partition customer1
+        $(basename "$0") modify partition customer1 paritionName=cust1 CPU=1 \
+        RAM=1G ipv4Whitelist="10.0.0.0/16,10.1.0.1"
+        $(basename "$0") modify partition customer2 CPU=1 HDD=20G RAM=1G ipv4Whitelist=clear
+"
+
+case "${_SUBCOMMANDS[0]}" in
+    defaultRelease)
+        tredly-host modify ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+    ;;
+    container)
+        tredly-host modify ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+    ;;
+    partition)
+        tredly-host modify ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+    ;;
+    *)
+        exit_with_error "Unknown modify command '${_SUBCOMMANDS[0]}'"
+    ;;
+esac

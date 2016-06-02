@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+##############################################################
+# TABLES:
+# 1 - list of external ip addresses
+# 2 - list of external epairs
+
+##############################################################
+# Script variables
+cmd="ipfw -q add"
+ks="keep-state"
+sks="setup keep-state"
+
+##############################################################
+# Flush all rules
+ipfw -q -f flush
+
+##############################################################
+# Enable NAT and Layer 4 Proxy
+. /usr/local/etc/ipfw.layer4
+
+##############################################################
+# Load persistent IPFW tables
+for f in /usr/local/etc/ipfw.table.*; do
+    . ${f}
+done
+
+##############################################################
+# Allow all loopback traffic
+$cmd 5 allow ip from any to any via lo0
+# Allow private containers to talk on their bridge
+$cmd 8 allow log logamount 5 ip from $clsn to any via $clif
+# Prevent external containers from talking to private containers
+$cmd 9 deny log logamount 5 ip from 'table(1)' to $clsn via 'table(2)'
+# Nat traffic received on external interface
+$cmd 100 nat 1 log logamount 5 ip from any to $eipTable recv $eifTable
+$cmd 101 check-state log logamount 5
+
+##############################################################
+# Tredly-Host
+$cmd 110 allow log logamount 5 icmp from any to $eipTable in via $eifTable $ks
+# Allow incoming SSH
+$cmd 111 allow log logamount 5 tcp from any to $eipTable 65222 in via $eifTable $sks
+# Allow outgoing ping
+$cmd 112 allow log logamount 5 icmp from $eipTable to any out via $eifTable $ks
+# Allow outgoing DNS, 80/443 and SSH to other Tredly Hosts
+$cmd 113 allow log logamount 5 tcp from $eipTable to any 53, 80, 443, 22, 65222 out via $eifTable $sks
+# Allow outgoing DNS and NTP
+$cmd 114 allow log logamount 5 udp from $eipTable to any 53, 123 out via $eifTable $ks
+
+##############################################################
+# Tredly-API reserved rules 150-159
+$cmd 150 allow log logamount 5 tcp from 'table(20)' to 'table(5)' 65223 in via 'table(6)' setup keep-state
+
+##############################################################
+# Incoming and outgoing NAT Skip rules
+$cmd 200 skipto 65510 log logamount 5 tcp from any to $clsn recv $eifTable $sks
+$cmd 201 skipto 65510 log logamount 5 udp from any to $clsn recv $eifTable $ks
+$cmd 202 skipto 65510 log logamount 5 tcp from $clsn to not $clsn xmit $eifTable $sks
+$cmd 203 skipto 65510 log logamount 5 udp from $clsn to not $clsn xmit $eifTable $ks
+
+##############################################################
+# VIMAGE rules for external containers
+# allow external epairs to communicate with anything
+$cmd 209 allow log logamount 5 ip from any to any via 'table(2)' $ks
+# allow anything to communicate with external ip addresses via external interface
+$cmd 211 allow log logamount 5 ip from any to 'table(1)' in via $eifTable $sks
+
+##############################################################
+# Block any further traffic
+$cmd 65501 deny log logamount 5 ip from any to any
+
+##############################################################
+# Incoming/Outgoing NAT rules
+$cmd 65510 nat 1 log logamount 5 ip from $clsn to any xmit $eifTable $ks
+$cmd 65511 allow log logamount 5 ip from $eipTable to any xmit $eifTable $ks
+$cmd 65512 allow log logamount 5 ip from any to $clsn recv $eifTable $ks
+$cmd 65513 deny log logamount 5 ip from any to any

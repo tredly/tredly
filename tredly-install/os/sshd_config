@@ -1,0 +1,23 @@
+Port 65222
+ListenAddress 
+HostKey /etc/ssh/ssh_host_key
+HostKey /etc/ssh/ssh_host_rsa_key
+KeyRegenerationInterval 1h
+ServerKeyBits 1024
+SyslogFacility AUTH
+LogLevel INFO
+PermitRootLogin no
+StrictModes yes
+MaxAuthTries 2
+MaxSessions 10
+RSAAuthentication yes
+PubkeyAuthentication no
+AuthorizedKeysFile %h/.ssh/authorized_keys
+RhostsRSAAuthentication no
+HostbasedAuthentication no
+IgnoreUserKnownHosts yes
+IgnoreRhosts yes
+PasswordAuthentication yes
+ChallengeResponseAuthentication yes
+UsePAM no
+VersionAddendum no

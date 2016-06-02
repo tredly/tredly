@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+show_help "console -- Provides a shell within the given container.
+
+# commands require running as root
+cmn_assert_running_as_root
+
+Options:
+    -h|--help|--usage  Displays this help text
+Examples:
+    $(basename "$0") console cf4c225f"
+
+tredly-host console ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}

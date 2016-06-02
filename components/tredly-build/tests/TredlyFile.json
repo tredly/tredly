@@ -1,0 +1,148 @@
+{
+    "container": {
+        "operations": {
+            "onCreate": [
+                {
+                    "type": "exec",
+                    "value": "mkdir /usr/local/etc/example/sslFolder"
+                },
+                {
+                    "source": "partition/mySSLCerts/star.example.com", 
+                    "type": "fileFolderMapping",
+                    "target": "/usr/local/etc/sslFolder"
+                },
+                {
+                    "type": "exec",
+                    "value": "mkdir /usr/local/pgsql"
+                },
+                {
+                    "type": "exec",
+                    "value": "mkdir /usr/local/pgsql/data"
+                },
+                {
+                    "type": "exec",
+                    "value": "mkdir /usr/local/pgsql/data/ssl"
+                },
+                {
+                    "type": "installPackage",
+                    "value": "nginx"
+                },
+                {
+                    "type": "installPackage",
+                    "value": "postgreSQL"
+                },
+                {
+                    "source": "postgresql.conf",
+                    "type": "fileFolderMapping",
+                    "target": "/usr/local/pgsql/data/"
+                },
+                {
+                    "source": "pg_hba.conf",
+                    "type": "fileFolderMapping",
+                    "target": "/usr/local/pgsql/data/"
+                },
+                {
+                    "source": "recovery.done",
+                    "type": "fileFolderMapping",
+                    "target": "/usr/local/pgsql/data/"
+                },
+                {
+                    "source": "server.key",
+                    "type": "fileFolderMapping",
+                    "target": "/usr/local/pgsql/data/ssl/"
+                },
+                {
+                    "source": "server.cert",
+                    "type": "fileFolderMapping",
+                    "target": "/usr/local/pgsql/data/ssl/"
+                },
+                {
+                    "source": "root.crt",
+                    "type": "fileFolderMapping",
+                    "target": "/usr/local/pgsql/data/ssl/"
+                },
+                {
+                    "type": "exec",
+                    "value": "sysrc postgresql_enable=yes"
+                },
+                {
+                    "type": "exec",
+                    "value": "/ usr/local/etc/rc.d/postgresql initdb"
+                },
+                {
+                    "type": "installPackage",
+                    "value": "unbound"
+                },
+                {
+                    "type": "exec",
+                    "value": "chmod 0600 /usr/local/pgsql/data/ssl/server.key"
+                },
+                {
+                    "type": "exec",
+                    "value": "service postgresql start"
+                }
+            ],
+            "onStop": [
+                "service postgresql stop",
+                "exampleCommand2"
+            ]
+        },
+        "customDNS": [],
+        "group": "MyContainerGroup",
+        "name": "myContainer-v1",
+        "buildOptions": {},
+        "firewall": {
+            "allowPorts": {
+                "udp": {
+                    "out": [],
+                    "in": []
+                },
+                "tcp": {
+                    "out": [],
+                    "in": [
+                        "80",
+                        "443"
+                    ]
+                }
+            }
+        },
+        "startOrder": "1",
+        "technicalOptions": {},
+        "publish": "no",
+        "versionNumber": "0.10.0",
+        "replicate": "no",
+        "proxy": {
+            "urls": [
+                {
+                    "url": "www.example.com/blah",
+                    "maxFileSize": "10m",
+                    "redirects": [
+                        {
+                            "url": "http://www2.example.com"
+                        },
+                        {
+                            "url": "https://www3.example.com",
+                            "cert": "star.example.com"
+                        }
+                    ],
+                    "cert": "star.example.com"
+                },
+                {
+                    "url": "www.example.com/blah",
+                    "maxFileSize": "10m",
+                    "redirects": [
+                        {
+                            "url": "http://www2.example.com"
+                        },
+                        {
+                            "url": "https://www3.example.com",
+                            "cert": "star.example.com"
+                        }
+                    ],
+                    "cert": "star.example.com"
+                }
+            ]
+        },
+        "resourceLimits": {}
+    }
+}

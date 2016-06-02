@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+
+# commands require running as root
+cmn_assert_running_as_root
+
+# Sanity checks - make sure packages we need are installed
+check_for_zfs
+check_for_ipfw
+
+show_help "Available Commands:
+    partition
+    ---------
+    Description:
+        Creates a partition with the given details. Partitions are used
+        to group containers and also to limit their resource usage.
+
+    Options:
+        CPU=            Set CPU limit
+        HDD=            Set Disk limit
+        RAM=            Set RAM limit
+        ipv4whitelist=  Set new ipv4 whitelist (yet to be implemented)
+
+    Examples:
+        $(basename "$0") create partiton customer1
+        $(basename "$0") create partiton customer2 CPU=1 RAM=1G
+        $(basename "$0") create partiton customer2 CPU=1 HDD=20G RAM=1G
+"
+
+case "${_SUBCOMMANDS[0]}" in
+    partition)
+        _partition_cpu=''
+        _partition_hdd=''
+        _partition_ram=''
+
+        # ensure we received right number of args
+        if [[ ${#_SUBCOMMANDS[@]} -gt 5 ]]; then
+            exit_with_error "Too many arguments received."
+        fi
+
+        # loop over the args received, populating the variables
+        for i in {2..4}; do
+            key="${_SUBCOMMANDS[${i}]%%=*}"
+            value="${_SUBCOMMANDS[${i}]#*=}"
+
+            # work out what it was that we received
+            case "${key}" in
+                CPU)
+                    _partition_cpu="${value}"
+                ;;
+                HDD)
+                    _partition_hdd="${value}"
+                ;;
+                RAM)
+                    _partition_ram="${value}"
+                ;;
+                *)
+                    if [[ -n "${key}" ]]; then
+                        exit_with_error "Invalid option \"${key}\""
+                    fi
+                ;;
+            esac
+        done
+
+        # create the partition
+        partition_create "${_SUBCOMMANDS[1]}" "${_partition_hdd}" "${_partition_cpu}" "${_partition_ram}"
+    ;;
+    *)
+        exit_with_error "Unknown create command \"${_SUBCOMMANDS[0]}\""
+    ;;
+esac

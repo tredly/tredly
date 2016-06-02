@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+show_help "list -- Lists containers.
+
+Examples:
+
+    $(basename "$0") list containers --sort=uuid
+    $(basename "$0") list partition
+    $(basename "$0") list partition <partitionname>
+
+Options:
+    -h|--help|--usage  Displays this help text"
+
+case "${_SUBCOMMANDS[0]}" in
+    containers)
+        tredly-host list ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+    ;;
+    partitions)
+        tredly-host list ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+    ;;
+    *)
+        exit_with_error "Unknown list command \"${_SUBCOMMANDS[0]}\""
+    ;;
+esac
+
+echo "--------------------"

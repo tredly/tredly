@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+show_help "init -- Initialises the Tredly environment.
+"
+# set up the environment
+init_environment

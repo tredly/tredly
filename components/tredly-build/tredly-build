@@ -1,0 +1,149 @@
+#!/usr/bin/env python3.5
+
+# import modules
+import builtins
+import argparse
+import os.path
+import sys
+import signal
+
+# capture the sigint handler
+def sigintHandler(signal, frame):
+    print('')
+    print('SIGINT caught. Exiting...')
+    exit(0)
+
+# catch sigint
+signal.signal(signal.SIGINT, sigintHandler)
+
+# set the path to the directory containing this script
+builtins.scriptDirectory = os.path.dirname(os.path.realpath(__file__))
+
+# work out whether this is an installed or non installed version
+# and include this scripts directories in the path
+if (builtins.scriptDirectory == "/usr/local/sbin"):
+    sys.path.insert(0, "/usr/local/lib/tredly")
+    sys.path.insert(0, "/usr/local/lib/tredly/actions")
+    sys.path.insert(0, "/usr/local/lib/tredly/includes")
+    sys.path.insert(0, "/usr/local/lib/tredly/objects")
+    builtins.tredlyConfDirectory = "/usr/local/etc/tredly"
+    builtins.tredlyJsonDirectory = "/usr/local/etc/tredly/json"
+else:
+    print("\033[43m\033[97mWARNING: Running from non installed location\033[49m\033[39m")
+    sys.path.insert(0, builtins.scriptDirectory + "/actions")
+    sys.path.insert(0, builtins.scriptDirectory + "/includes")
+    sys.path.insert(0, builtins.scriptDirectory + "/objects")
+    sys.path.insert(0, builtins.scriptDirectory + "/tests")
+    builtins.tredlyConfDirectory = builtins.scriptDirectory + "/conf"
+    builtins.tredlyJsonDirectory = builtins.scriptDirectory + "/json"
+
+# import modules
+from config.configfile import ConfigFile
+from zfs.zfs import ZFSDataset
+
+# import actions
+from actions.create import *
+from actions.destroy import *
+from actions.replace import *
+
+# include global modules
+from includes.defines import *
+from includes.output import *
+
+# set some constants
+SHOW_HELP = False
+DEBUG = False
+VERBOSE= False
+SCRIPTNAME = os.path.basename(__file__)
+
+# get an argparser object
+argParser = argparse.ArgumentParser(description=SCRIPTNAME)
+
+# set up arguments in argparser
+argParser.add_argument('action', help='init create destroy list modify replace')
+argParser.add_argument('subject', nargs='?', help='container etc')
+argParser.add_argument('target', nargs='?', help='partition etc')
+argParser.add_argument('identifier', nargs='?', help='identifier - uuid etc')
+
+argParser.add_argument('--containerName', help='Override container name')
+argParser.add_argument('--ip4_addr', help='Override container networking. eg --ip4_addr="bridge0|192.168.0.5/24"')
+argParser.add_argument('--path', help='Path to Tredlyfile')
+argParser.add_argument('-d', '--debug', action='store_true', help='Enable debug mode')
+argParser.add_argument('--verbose', action='store_true', help='Enable verbose mode')
+argParser.add_argument('-v', '--version', action='store_true', help='Show version')
+
+# parse args
+args = argParser.parse_args()
+
+# enable debug mode if requested
+if (args.debug):
+    DEBUG = True
+
+# enable verbose mode if requested
+if (args.verbose):
+    VERBOSE = True
+
+# use current directory by default
+path=".";
+
+# see if --path was passed and that its an actual directory
+# if not then assume current directory for path
+if (args.path is not None):
+    if (os.path.isdir(args.path)):
+        path=args.path
+    else:
+        e_error("Directory " + args.path + " not found")
+        exit(1)
+
+# make sure the base ZFS datasets are present
+zfsTredly = ZFSDataset(ZFS_TREDLY_DATASET)
+if (not zfsTredly.exists()):
+    e_error("Dataset " + ZFS_TREDLY_DATASET + " does not exist. Please run tredly init")
+    exit(1)
+
+zfsReleases = ZFSDataset(ZFS_TREDLY_RELEASES_DATASET)
+if (not zfsReleases.exists()):
+    e_error("Dataset " + ZFS_TREDLY_RELEASES_DATASET + " does not exist. Please run tredly init")
+    exit(1)
+
+zfsPartitions = ZFSDataset(ZFS_TREDLY_PARTITIONS_DATASET)
+if (not zfsPartitions.exists()):
+    e_error("Dataset " + ZFS_TREDLY_PARTITIONS_DATASET + " does not exist. Please run tredly init")
+    exit(1)
+
+zfsDefaultPartition = ZFSDataset(ZFS_TREDLY_PARTITIONS_DATASET + '/' + TREDLY_DEFAULT_PARTITION)
+if (not zfsDefaultPartition.exists()):
+    e_error("Dataset " + ZFS_TREDLY_PARTITIONS_DATASET + '/' + TREDLY_DEFAULT_PARTITION + " does not exist. Please run tredly init")
+    exit(1)
+
+# process the config file
+builtins.tredlyCommonConfig = ConfigFile()
+# parse it
+builtins.tredlyCommonConfig.process()
+
+# validate hte common config
+if (not builtins.tredlyCommonConfig.validate()):
+    exit_with_error("Failed to validate tredly-host.conf")
+
+# action logic
+if (args.action == "create") and (args.subject == "container"): # create container
+    # check if target was received
+    if (args.target is not None):
+        partitionName=args.target
+    else:
+        # use current directory
+        partitionName="default"
+    
+    # create a container
+    actionCreateContainer(args.containerName, partitionName, path, args.ip4_addr)
+elif (args.action == "destroy") and (args.subject == "container"):  # destroy container
+    # destroy the container
+    actionDestroyContainer(args.target)
+elif (args.action == "replace") and (args.subject == "container"):  # replace container
+    # replace the container
+    actionReplaceContainer(args.containerName, args.identifier, args.target, path, args.ip4_addr)
+elif (args.action == "version"):
+    print(SCRIPTNAME + ": version " + VERSION_NUMBER + " (built " + VERSION_DATE + ")")
+else:
+    e_error("Command not found")
+    exit(1)

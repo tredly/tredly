@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+
+# commands require running as root
+cmn_assert_running_as_root
+
+show_help "Available Commands:
+    container
+    ---------
+    Description:
+        Destroys a single container specified by UUID.
+
+    Examples:
+        $(basename "$0") destroy container aF4kj5x0
+
+    containers partition
+    ---------
+    Description:
+        Destroy all containers on a given partition, but leave the partition
+        intact.
+
+    Examples:
+        $(basename "$0") destroy containers customer1
+        
+    partition
+    ---------
+    Description:
+        Destroy a partition and all data held within. This includes all
+        containers.
+
+    Examples:
+        $(basename "$0") destroy partition customer1
+
+    partitions
+    ---------
+    Description:
+        Destroys all partitions on this host, and all data held within.
+
+    Examples:
+        $(basename "$0") destroy partitions
+"
+
+case "${_SUBCOMMANDS[0]}" in
+    container)
+        tredly-build destroy ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+    ;;
+    
+    containers)
+        partition_destroy_containers "${_SUBCOMMANDS[1]}"
+    ;;
+    partition)
+        tredly-host destroy ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+    ;;
+    partitions)
+        tredly-host destroy ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+    ;;
+    *)
+        exit_with_error "Unknown destroy command '${_SUBCOMMANDS[0]}'"
+    ;;
+esac
