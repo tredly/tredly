@@ -169,7 +169,9 @@ class Layer7Proxy:
             redirectFromProtocol = 'https'
             redirectFromPort = "443"
         
+        # split out the redirect to parts
         redirectToProtocol = redirectTo.split('://')[0]
+        redirectToDomain = redirectTo.split('://')[1].rstrip('/')
         
         # form the file path - remove trailing slash, and replace dashes with dots
         filePath = "/usr/local/etc/nginx/server_name/" + redirectFromProtocol + '-' + nginxFormatFilename(urlDomain.rstrip('/'))
@@ -201,9 +203,9 @@ class Layer7Proxy:
         except (KeyError, TypeError):
             # not defined, so define it
             servernameRedirect.server[0].addBlock('location', urlDirectory)
-            
+        
         # add redirect attr
-        servernameRedirect.server[0].location[urlDirectory].attrs['return'][0] = "301 " + redirectToProtocol + '://' + urlDomain.rstrip('/') + '$request_uri'
+        servernameRedirect.server[0].location[urlDirectory].attrs['return'][0] = "301 " + redirectToProtocol + '://' + redirectToDomain + '$request_uri'
         
         # save the file and return whether it succeeded or not
         return servernameRedirect.saveFile()

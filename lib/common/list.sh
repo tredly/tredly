@@ -64,11 +64,17 @@ function list_containers() {
 
         local _jid=$(jls -j trd-${_uuid} jid 2> /dev/null)
         local _state
-        # if the jid is empty then the container is down
-        if [ -z "${_jid}" ] ; then
-            _state="down"
-        else
-           _state="up"
+        
+        # get state from ZFS
+        _state=$( zfs_get_property "${_dataset}" "${ZFS_PROP_ROOT}:containerstate" )
+        
+        # if the state is empty then check for jid
+        if [[ "${_state}" == '-' ]]; then
+            if [ -z "${_jid}" ]; then
+                _state="down"
+            else
+                _state="up"
+            fi
         fi
         # if the ip address was empty, replace with a dash
         if [[ -z "${_ip4}" ]]; then

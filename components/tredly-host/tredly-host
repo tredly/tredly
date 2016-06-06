@@ -19,7 +19,7 @@ declare -A _FLAGS
 
 # versioning
 _VERSIONNUMBER="1.0.0-beta"
-_VERSIONDATE="June 2 2016"
+_VERSIONDATE="June 3 2016"
 
 _SHOW_HELP=false
 _ARGS=($@)
@@ -53,7 +53,7 @@ else
     # set some useful variables
     _TREDLY_DIR_LIB="${_TREDLY_DIR}/../../lib/common"
     _TREDLY_DIR_COMMANDS="${_TREDLY_DIR}/commands"
-    _TREDLY_DIR_CONF="${_TREDLY_DIR}/conf"
+    _TREDLY_DIR_CONF="${_TREDLY_DIR}/../../conf"
 fi
 
 # load the libs

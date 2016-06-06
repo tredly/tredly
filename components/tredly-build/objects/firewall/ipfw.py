@@ -78,6 +78,7 @@ class IPFW:
         for tableNum, tableList in self.tables.items():
             filePath = self.directory + "/ipfw.table." + str(tableNum)
 
+
             # open the table file for writing
             with open(filePath, "w") as ipfw_table:
                 print('#!/usr/bin/env sh', file=ipfw_table)
@@ -90,8 +91,14 @@ class IPFW:
             # Set the permissions on this file to 700
             os.chmod(filePath, 0o700)
             
+            # set up the list command
+            listCmd = ['ipfw', 'table', str(tableNum), 'list']
+            if (self.uuid is not None):
+                # handle the container command
+                listCmd = ['jexec', 'trd-' + self.uuid] + listCmd
+
             # get a list of live tables and remove the ips that arent associated with this object
-            listCmd = ['jexec', 'trd-' + self.uuid, 'sh', '-c', 'ipfw table ' + str(tableNum) + ' list']
+            
             process = Popen(listCmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
             stdOut, stdErr = process.communicate()
             if (process.returncode != 0):
@@ -258,6 +265,8 @@ class IPFW:
         if (isValidIp4(value)) and ('/' not in value):
             # it is so assume its a host
             value = value + '/32'
+
+
 
         # check if the value exists
         if (value in self.tables[tableNum]):

@@ -180,3 +180,37 @@ def ip4ToIP6(ip4):
     # convert ip4 to rfc 3056 IPv6 6to4 address
     # http://tools.ietf.org/html/rfc3056#section-2
     return str(IPv6Address(int(IPv6Address("2002::")) | (int(ip4Obj) << 80)))
+
+# validates an ip4_addr from command line
+def validateIp4Addr(ip4Addr):
+    regex = '^(\w+)\|([\w.]+)\/(\d+)$'
+    m = re.match(regex, ip4Addr)
+    
+    if (m is None):
+        e_error('Could not validate ip4_addr "' + ip4Addr + '" - incorrect format')
+        return False
+    else:
+        # assign from regex match
+        interface = m.group(1)
+        ip4 = m.group(2)
+        cidr = m.group(3)
+        
+        # make sure the interface exists
+        if (not networkInterfaceExists(interface)):
+            e_error('Interface "' + interface + '" does not exist in "' + ip4Addr +'"')
+            return False
+        # validate the ip4
+        if (not isValidIp4(ip4)):
+            e_error('IP Address "' + ip4 + '" is invalid in "' + ip4Addr +'"')
+            return False
+        # validate the cidr
+        if (not isValidCidr(cidr)):
+            e_error('CIDR "' + cidr + '" is invalid in "' + ip4Addr + '"')
+            return False
+
+        # make sure its not already in use
+        if (ip4InUse(ip4)):
+            e_error("IP Address " + ip4 + ' is already in use.')
+            return False
+        
+    return True

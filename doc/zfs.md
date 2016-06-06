@@ -63,12 +63,14 @@ None
 * com.tredly:exec_timeout - Timeout to wait for a command to complete.
 * com.tredly:exec_fib - The FIB to use when running commands within a container.
 * com.tredly:stop_timeout - Timeout to wait for a container to stop.
+* com.tredly:containerstate - Container state - allows us to display soemthing descriptive to the user when for example the container is being replaced
 
 ## Container Property Arrays
 * com.tredly.tcpinports - array of tcpinports from tredlyfile
 * com.tredly.tcpoutports - array of tcpoutports from tredlyfile
 * com.tredly.udpinports - array of udpinports from tredlyfile
 * com.tredly.udpoutports - array of udpoutports from tredlyfile
+* com.tredly.jsonurls - jsonified URL objects
 * com.tredly.url - array of translated urls from tredlyfile
 * com.tredly.url_cert - array of translated urlCerts from tredlyfile 
 * com.tredly.redirect_url - array of redirected urls set up for this container

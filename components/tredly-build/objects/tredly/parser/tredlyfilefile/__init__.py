@@ -107,13 +107,16 @@ class TredlyfileParser(TredlyParser):
 
         urls = {}
 
+        # append url info
         def addUrl(index,prop,value):
             if not prop: prop = 'url'
+            # set up redirects
             if index not in urls:
                 urls[index] = {
                     'redirects': {}
                 }
 
+            # check if this is a redirect line
             isRedirect = re.match("^Redirect(\d+)(.*)", prop)
 
             if (isRedirect) and (val is not None):
@@ -126,6 +129,10 @@ class TredlyfileParser(TredlyParser):
 
                 urls[index]['redirects'][redirectIndex][redirectProp] = val
 
+                # if this attribute doesnt have a cert associated then set it to none
+                if ('cert' not in urls[index]['redirects'][redirectIndex]):
+                    urls[index]['redirects'][redirectIndex]['cert'] = None
+
             else:
                 _prop = prop[0].lower() + prop[1::]
                 if (_prop == "websocket"):
@@ -133,15 +140,19 @@ class TredlyfileParser(TredlyParser):
                         _prop = "enableWebsocket"
                     else: return
                 urls[index][_prop] = val
+        
         def technicalOptions(value):
             with open(os.path.join(os.path.dirname(__file__), "technicalOptionsMap.json")) as techOptsMap:
                 _map = json.load(techOptsMap)
                 split = value.split('=')
-                key = _map[split[0]]
-                val = split[1]
-                if (key == 'children.max'):
-                    val = int(val)
-                addKey('technicalOptions', key)(val)
+                try:
+                    key = _map[split[0]]
+                    val = split[1]
+                    if (key == 'children.max'):
+                        val = int(val)
+                    addKey('technicalOptions', key)(val)
+                except KeyError:
+                    pass
 
         def resourceLimits(key):
             def add(value):
@@ -150,6 +161,9 @@ class TredlyfileParser(TredlyParser):
                 addKey('resourceLimits', key)(val)
             return add
 
+        # set the layer 4 proxy value
+        def layer4Proxy(value):
+            container['proxy']['layer4Proxy'] = value
 
         funcs = {
             'publish': addKey('buildOptions', 'publish'),
@@ -157,6 +171,8 @@ class TredlyfileParser(TredlyParser):
             'maxCpu': addKey('resourceLimits', 'maxCpu'),
             'maxHdd': resourceLimits('maxHdd'),
             'maxRam': resourceLimits('maxRam'),
+            
+            'layer4Proxy': layer4Proxy,
 
             'onStart': operations('onCreate','exec'),
             'installPackage': operations('onCreate','installPackage'),

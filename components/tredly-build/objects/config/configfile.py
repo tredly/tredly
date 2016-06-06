@@ -6,26 +6,24 @@ from includes.util import *
 from includes.output import *
 
 class ConfigFile:
-
-    filePath = None
-    required = []
-    wif = None
-    lif = None
-    wifPhysical = None
-    lifNetwork = None
-    lifCIDR = None
-    dns = []
-    httpProxyIP = None
-    tld = None
-    vnetDefaultRoute = None
-    firewallEnableLogging = None
     
     # Constructor
     def __init__(self, filePath = None):
         if (filePath is None):
             filePath = builtins.tredlyConfDirectory + "/tredly-host.conf"
-        
+            
         self.filePath = filePath
+        self.required = []
+        self.wif = None
+        self.lif = None
+        self.wifPhysical = None
+        self.lifNetwork = None
+        self.lifCIDR = None
+        self.dns = []
+        self.httpProxyIP = None
+        self.tld = None
+        self.vnetDefaultRoute = None
+        self.firewallEnableLogging = None
 
     # Action: process a config file - populates this class
     #
@@ -38,6 +36,7 @@ class ConfigFile:
     def process(self):
         # check if the file exists at the given path
         if (not self.fileExists()):
+            e_error("Config file " + self.filePath + " does not exist.")
             return False;
         
         # file exists so process it
@@ -91,7 +90,7 @@ class ConfigFile:
                         elif (key == "firewallEnableLogging"):
                             self.firewallEnableLogging = value;
                         else:
-                            print("Unrecognised config definition: " + line);
+                            e_warning("Unrecognised config definition: " + line);
         
         return True
     
@@ -147,7 +146,7 @@ class ConfigFile:
             elif (required == "firewallEnableLogging"):
                 if (len(self.firewallEnableLogging) == 0):
                     return False
-        
+
         # make sure network interfaces exist
         if (not networkInterfaceExists(self.wif)):
             e_error('Interface "' + self.wif + '" does not exist in "tredly-host.conf"')

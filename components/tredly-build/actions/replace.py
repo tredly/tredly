@@ -29,9 +29,17 @@ def actionReplaceContainer(containerName, uuidToReplace, partitionName, tredlyFi
     
     if (partitionName is None):
         e_error("Please include a partition name.")
+        exit(1)
         
     if (tredlyFilePath is None):
         e_error("Please specify the path of the new container")
+        exit(1)
+        
+    # validate the manual ip4_addr if it was passed
+    if (ip4Addr is not None):
+        # validate it
+        if (not validateIp4Addr(ip4Addr)):
+            exit(1)
     
     # End pre flight checks
     ###############################
@@ -39,8 +47,6 @@ def actionReplaceContainer(containerName, uuidToReplace, partitionName, tredlyFi
     # process the tredlyfile
     builtins.tredlyFile = TredlyFile(tredlyFilePath + "/Tredlyfile")
 
-    #print(json.dumps(builtins.tredlyFile.json))
-    
     # set the new container name'
     if (containerName is None):
         # get from tredlyfile
@@ -68,11 +74,15 @@ def actionReplaceContainer(containerName, uuidToReplace, partitionName, tredlyFi
         e_header("Replacing Container " + oldContainerName + " with " + newContainerName)
         
         # change the name of the old container
-        if (not zfsOldContainer.setProperty(ZFS_PROP_ROOT + ':containername', oldContainerName + '-OLD')):
+        if (not zfsOldContainer.setProperty(ZFS_PROP_ROOT + ':containername', oldContainerName + '-REPLACING')):
             e_error("Failed to rename old container")
+        
+        if (not zfsOldContainer.setProperty(ZFS_PROP_ROOT + ':containerstate', 'replacing')):
+            e_error("Failed to set container state")
+        
     
     # create the container
-    actionCreateContainer(newContainerName, partitionName, tredlyFilePath, ip4Addr)
+    actionCreateContainer(newContainerName, partitionName, tredlyFilePath, ip4Addr, True)
 
     
     # destroy the old container if it exists on this partition

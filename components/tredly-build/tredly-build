@@ -34,7 +34,7 @@ else:
     sys.path.insert(0, builtins.scriptDirectory + "/includes")
     sys.path.insert(0, builtins.scriptDirectory + "/objects")
     sys.path.insert(0, builtins.scriptDirectory + "/tests")
-    builtins.tredlyConfDirectory = builtins.scriptDirectory + "/conf"
+    builtins.tredlyConfDirectory = builtins.scriptDirectory + "/../../conf"
     builtins.tredlyJsonDirectory = builtins.scriptDirectory + "/json"
 
 # import modules
@@ -45,6 +45,8 @@ from zfs.zfs import ZFSDataset
 from actions.create import *
 from actions.destroy import *
 from actions.replace import *
+from actions.start import *
+from actions.stop import *
 
 # include global modules
 from includes.defines import *
@@ -136,14 +138,27 @@ if (args.action == "create") and (args.subject == "container"): # create contain
     
     # create a container
     actionCreateContainer(args.containerName, partitionName, path, args.ip4_addr)
+    
 elif (args.action == "destroy") and (args.subject == "container"):  # destroy container
     # destroy the container
     actionDestroyContainer(args.target)
+    
 elif (args.action == "replace") and (args.subject == "container"):  # replace container
     # replace the container
     actionReplaceContainer(args.containerName, args.identifier, args.target, path, args.ip4_addr)
+    
+elif (args.action == "start") and (args.subject == "container"):  # replace container
+    # replace the container
+    actionStartContainer(args.target, args.ip4_addr)
+    
+elif (args.action == "stop") and (args.subject == "container"):  # replace container
+    # replace the container
+    actionStopContainer(args.target)
+    
 elif (args.action == "version"):
+    # print the version
     print(SCRIPTNAME + ": version " + VERSION_NUMBER + " (built " + VERSION_DATE + ")")
+    
 else:
-    e_error("Command not found")
+    e_error("Command " + args.action + " not found")
     exit(1)

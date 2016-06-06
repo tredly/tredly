@@ -139,38 +139,6 @@ fi
 
 ##########
 
-if [[ -z "${_CONF_COMMON[tredlyApiGit]}" ]]; then
-    e_note "Skipping Tredly-API"
-else
-    # set up tredly api
-    e_note "Configuring Tredly-API"
-    _exitCode=1
-    cd /tmp
-    # if the directory for tredly-api already exists, then delete it and start again
-    if [[ -d "/tmp/tredly-api" ]]; then
-        echo "Cleaning previously downloaded Tredly-API"
-        rm -rf /tmp/tredly-api
-    fi
-
-    while [[ ${_exitCode} -ne 0 ]]; do
-        git clone -b "${_CONF_COMMON[tredlyApiBranch]}" "${_CONF_COMMON[tredlyApiGit]}"
-        _exitCode=$?
-    done
-
-    cd /tmp/tredly-api
-    
-    # install the API and extract the random password so we can present this to the user at the end of install
-    apiPassword="$( ./install.sh | grep "^Your API password is: " | cut -d':' -f 2 | sed -e 's/^[ \t]*//' )"
-    
-    if [[ ${PIPESTATUS[0]} -eq 0 ]]; then
-        e_success "Success"
-    else
-        e_error "Failed"
-    fi
-fi
-
-##########
-
 # Update FreeBSD and install updates
 e_note "Fetching and Installing FreeBSD Updates"
 freebsd-update fetch install | tee -a "${_LOGFILE}"
@@ -450,6 +418,38 @@ if [[ $? -eq 0 ]]; then
     e_success "Success"
 else
     e_error "Failed"
+fi
+
+##########
+
+if [[ -z "${_CONF_COMMON[tredlyApiGit]}" ]]; then
+    e_note "Skipping Tredly-API"
+else
+    # set up tredly api
+    e_note "Configuring Tredly-API"
+    _exitCode=1
+    cd /tmp
+    # if the directory for tredly-api already exists, then delete it and start again
+    if [[ -d "/tmp/tredly-api" ]]; then
+        echo "Cleaning previously downloaded Tredly-API"
+        rm -rf /tmp/tredly-api
+    fi
+
+    while [[ ${_exitCode} -ne 0 ]]; do
+        git clone -b "${_CONF_COMMON[tredlyApiBranch]}" "${_CONF_COMMON[tredlyApiGit]}"
+        _exitCode=$?
+    done
+
+    cd /tmp/tredly-api
+    
+    # install the API and extract the random password so we can present this to the user at the end of install
+    apiPassword="$( ./install.sh | grep "^Your API password is: " | cut -d':' -f 2 | sed -e 's/^[ \t]*//' )"
+    
+    if [[ ${PIPESTATUS[0]} -eq 0 ]]; then
+        e_success "Success"
+    else
+        e_error "Failed"
+    fi
 fi
 
 ##########

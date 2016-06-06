@@ -2,6 +2,7 @@
 
 from includes.output import *
 from subprocess import Popen, PIPE;
+import json
 
 class ZFSDataset:
     # Constructor
@@ -132,7 +133,13 @@ class ZFSDataset:
         # check the exit code
         if (rc == 0):
             # executed successfully
-            return stdOut.decode(encoding='UTF-8').rstrip()
+            stdOutString = stdOut.decode(encoding='UTF-8').rstrip()
+            
+            # if a dash was returned then return None as it is the same thing
+            if (stdOutString == '-'):
+                return None
+            
+            return stdOutString
         else:
             # command failed
             return None
@@ -193,6 +200,19 @@ class ZFSDataset:
             print(str(stdErr))
             # command failed
             return False
+
+    # unsets a specific property
+    def unsetProperty(self, property):
+        # remove the item
+        cmd = ['zfs', 'inherit', '-r', property, self.dataset]
+        result = Popen(cmd, stdout=PIPE)
+        stdOut, stdErr = result.communicate()
+        # check return code
+        if (result.returncode != 0):
+            e_error("An error occurred when deleting property + " + property + " from ZFS")
+            return False
+
+        return True
 
     # Action: add a value to a "property array"
     #
@@ -276,6 +296,19 @@ class ZFSDataset:
             returnArray[key] = value
         
         return returnArray
+    
+    # gets json data from zfs
+    # returns a list
+    def getJsonArray(self, property):
+        array = self.getArray(property)
+        
+        returnList = []
+        
+        # loop over the items turning them into objects
+        for key, value in array.items():
+            returnList.append(json.loads(value))
+        
+        return returnList
 
     def unsetArray(self, property):
         array = self.getArray(property)

@@ -50,7 +50,7 @@ global VERSION_DATE
 # set version number and date
 #VERSION_NUMBER = "1.0.0-beta"
 VERSION_NUMBER = "0.10.0"
-VERSION_DATE = "June 2 2016"
+VERSION_DATE = "June 6 2016"
 
 # ZFS Dataset locations
 ZFS_ROOT = "zroot"

@@ -450,6 +450,9 @@ function ip4_set_host_network() {
     local _ip4=$( lcut "${_ip4}" '/' )
 
     local _exitCode=0
+    
+    e_header "Setting Tredly host IP address to ${2} on interface ${_interface}"
+    
 
     if [[ -z "${_ip4}" ]]; then
         exit_with_error "Please include an ip address"
@@ -476,8 +479,6 @@ function ip4_set_host_network() {
 
 
     local _ip4Subnet=$( cidr2netmask "${_ip4CIDR}" )
-
-    e_header "Setting Tredly host IP address to ${2} on interface ${_interface}"
 
     # set the ip address
     local _exitCode=0
@@ -572,13 +573,13 @@ function ip4_set_host_gateway() {
     local _gateway="${1}"
 
     local _exitCode=0
+    
+    e_header "Setting Tredly host default gateway to ${_gateway}"
 
     # ensure its a valid ip4 address
     if ! is_valid_ip4 "${_gateway}"; then
         exit_with_error "Invalid IP4 address: ${_gateway}"
     fi
-
-    e_header "Setting Tredly host default gateway to ${_gateway}"
 
     # get the current default gateway
     local _currentGW=$( netstat -r | grep default | awk '{print $2}' )
@@ -622,15 +623,14 @@ function ip4_set_host_gateway() {
 # changes the hosts hostname
 function ip4_set_host_hostname() {
     local _hostname="${1}"
-
     local _exitCode=0
+    
+    e_header "Setting Tredly hostname to ${_hostname}"
 
     # ensure a hostname was received
     if [[ -z "${_hostname}" ]]; then
         exit_with_error "Please enter a hostname"
     fi
-
-    e_header "Setting Tredly hostname to ${_hostname}"
 
     # change the live hostname
     hostname "${_hostname}"
@@ -662,6 +662,8 @@ function ip4_set_host_hostname() {
 # updates all configurations with the given new subnet for containers
 function ip4_set_container_subnet() {
     local _ipSubnet="${1}"
+
+    e_header "Updating container subnet"
 
     # check if there are built containers
     local _containerCount=$( zfs_get_all_containers | wc -l )
@@ -702,9 +704,6 @@ function ip4_set_container_subnet() {
     if network_interface_exists "${_interface}"; then
         _oldJIP=$( get_interface_ip4 "${_interface}" )
     fi
-    
-
-    e_header "Updating container subnet"
 
     #################
     ## UPDATE HOSTS CONFIGS - rc.conf, ipfw.vars, tredly-host.conf
@@ -766,9 +765,7 @@ function ip4_set_container_subnet() {
     
     replace_line_in_file "^p7ip=\".*\"" "p7ip=\"${_newJIP}\"" "/usr/local/etc/ipfw.vars"
     _exitCode=$(( _exitCode & $? ))
-    
-    
-    
+
     if [[ ${_exitCode} -eq 0 ]]; then
         e_success "Success"
     else
@@ -789,7 +786,7 @@ function ip4_set_container_subnet() {
 
     e_note "Updating unbound.conf"
     sed -i '' "s|access-control: 10.0.0.0/16 allow|access-control: ${_ipSubnet} allow|g" "/usr/local/etc/unbound/unbound.conf"
-    
+
     if  replace_line_in_file "^    interface: .*$" "    interface: ${_newJIP}" "/usr/local/etc/unbound/unbound.conf" && \
         replace_line_in_file "^    access-control: .* allow$" "    access-control: ${_ip4}/${_cidr} allow" "/usr/local/etc/unbound/unbound.conf"; then
         e_success "Success"
@@ -799,7 +796,7 @@ function ip4_set_container_subnet() {
 
     # check if unbound is running
     service unbound status > /dev/null 2>&1
-    
+
     if [[ $? -eq 0 ]]; then
         # unbound running so reload it
         e_note "Reloading DNS server"

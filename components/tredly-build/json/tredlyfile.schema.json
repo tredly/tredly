@@ -385,7 +385,7 @@
                         },
                         "cert": {
                           "description": "SSL certificate to apply to a http redirect 'from' URL.",
-                          "type": "string"
+                          "type": [ "string", "null" ]
                         }
                       },
                       "required": [

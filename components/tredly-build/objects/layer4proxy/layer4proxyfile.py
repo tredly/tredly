@@ -57,6 +57,7 @@ class Layer4ProxyFile:
                     
                     # increment hte counter
                     i += 1
+                
 
     # Action: append a value to our proxy rules
     #
@@ -73,13 +74,15 @@ class Layer4ProxyFile:
         # only append if the source and dest ports dont exist to prevent errors
         if (not self.srcPortExists(sourcePort)) and (not self.destPortExists(destPort)):
             # append to our dict
-            return self.lines.append({
+            self.lines.append({
                 'uuid': uuid,
                 'protocol': protocol,
                 'destHost': destHost,
                 'destPort': destPort,
                 'sourcePort': sourcePort
             })
+            
+            return True
         else:
             return False
 
