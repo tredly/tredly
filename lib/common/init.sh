@@ -56,7 +56,7 @@ function init_environment() {
     _filesToDownload+=('src.txz')
 
     # fetch the manifest first so we can validate the files as we go along
-    fetch http://ftp.freebsd.org/pub/FreeBSD/releases/amd64/amd64/${_release}/MANIFEST
+    fetch https://download.freebsd.org/ftp/releases/amd64/${_release}/MANIFEST
 
     local _file
     # fetch the files
@@ -72,7 +72,7 @@ function init_environment() {
         fi
 
         if [[ "${_download}" == "true" ]]; then
-            fetch http://ftp.freebsd.org/pub/FreeBSD/releases/amd64/amd64/${_release}/${_file}
+            fetch https://download.freebsd.org/ftp/releases/amd64/${_release}/${_file}
             if [ $? -ne 0 ]; then
                 exit_with_error "Failed to download file"
             fi

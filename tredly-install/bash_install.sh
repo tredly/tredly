@@ -177,6 +177,8 @@ pkg install -y git | tee -a "${_LOGFILE}"
 _exitCode=$(( ${PIPESTATUS[0]} & $? ))
 pkg install -y python35 | tee -a "${_LOGFILE}"
 _exitCode=$(( ${PIPESTATUS[0]} & $? ))
+pkg install -y py27-fail2ban | tee -a "${_LOGFILE}"
+_exitCode=$(( ${PIPESTATUS[0]} & $? ))
 if [[ ${_exitCode} -ne 0 ]]; then
     exit_with_error "Failed to download git"
 fi
@@ -246,7 +248,20 @@ _exitCode=$(( ${_exitCode} & $? ))
 # Removed ipfw start for now due to its ability to disconnect a user from their host
 #service ipfw start
 #_exitCode=$(( ${_exitCode} & $? ))
-if [[ $_exitCode -eq 0 ]]; then
+if [[ ${_exitCode} -eq 0 ]]; then
+    e_success "Success"
+else
+    e_error "Failed"
+fi
+
+##########
+# Configure Fail2ban
+e_note "Configuring Fail2Ban"
+cp "${_DIR}/fail2ban/ssh-ipfw.conf" "/usr/local/etc/fail2ban/jail.d/ssh-ipfw.conf"
+_exitCode=$(( ${_exitCode} & $? ))
+cp "${_DIR}/fail2ban/action/ipfw-ssh.conf" "/usr/local/etc/fail2ban/action.d/ipfw-ssh.conf"
+_exitCode=$(( ${_exitCode} & $? ))
+if [[ ${_exitCode} -eq 0 ]]; then
     e_success "Success"
 else
     e_error "Failed"

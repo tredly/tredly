@@ -21,3 +21,5 @@ PasswordAuthentication yes
 ChallengeResponseAuthentication yes
 UsePAM no
 VersionAddendum no
+# Necessary for Fail2Ban
+UseDNS no

@@ -26,11 +26,13 @@ done
 
 ##############################################################
 # Allow all loopback traffic
-$cmd 5 allow ip from any to any via lo0
+$cmd 10 allow ip from any to any via lo0
+# Block all ip addresses banned by fail2ban for specific ports
+$cmd 20 deny all from 'table(50)' to any dst-port 65222 in
 # Allow private containers to talk on their bridge
-$cmd 8 allow log logamount 5 ip from $clsn to any via $clif
+$cmd 30 allow log logamount 5 ip from $clsn to any via $clif
 # Prevent external containers from talking to private containers
-$cmd 9 deny log logamount 5 ip from 'table(1)' to $clsn via 'table(2)'
+$cmd 31 deny log logamount 5 ip from 'table(1)' to $clsn via 'table(2)'
 # Nat traffic received on external interface
 $cmd 100 nat 1 log logamount 5 ip from any to $eipTable recv $eifTable
 $cmd 101 check-state log logamount 5
