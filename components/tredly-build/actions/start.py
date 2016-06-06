@@ -90,6 +90,8 @@ def actionStartContainer(uuid, ip4Addr = None):
 
     # load the containers properties from ZFS
     container.loadFromZFS(containerDataset)
+    if (container.uuid is None):
+        container.uuid = uuid
     
     e_header("Starting Container - " + container.name + ' in partition ' + container.partitionName)
 

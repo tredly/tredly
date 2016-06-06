@@ -367,6 +367,10 @@
                     "type": "boolean",
                     "default": false
                   },
+                  "errorResponse": {
+                    "type": "boolean",
+                    "default": true
+                  },
                   "maxFileSize": {
                     "type": "string",
                     "optional": true,

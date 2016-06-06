@@ -743,6 +743,11 @@ class Container:
         # read the rules in
         self.firewall.readRules()
         
+        
+        # do some error checking
+        if (self.name is None):
+            self.name = "noname"
+        
         return True
 
     # Action: destroy this container
@@ -1465,6 +1470,8 @@ class Container:
                     groupMemberDataset = ZFS_TREDLY_PARTITIONS_DATASET + "/" + partitionName + "/" + TREDLY_CONTAINER_DIR_NAME + "/" + memberUUID
                     groupMember = Container()
                     groupMember.loadFromZFS(groupMemberDataset)
+                    if (groupMember.uuid is None):
+                        groupMember.uuid = memberUUID
                     
                     # remove the ip from this containers containergroup members
                     groupMember.firewall.removeFromTable(1, str(self.containerInterfaces[0].ip4Addrs[0].ip))
