@@ -81,6 +81,14 @@ class Layer7Proxy:
             servername.server[0].attrs['ssl'][0] = "on"
             servername.server[0].attrs['ssl_certificate'][0] = sslCert
             servername.server[0].attrs['ssl_certificate_key'][0] = sslKey
+        else:
+            # remove the ssl entries
+            if ('ssl' in servername.server[0].attrs.keys()):
+                del servername.server[0].attrs['ssl']
+            if ('ssl_certificate' in servername.server[0].attrs.keys()):
+                del servername.server[0].attrs['ssl_certificate']
+            if ('ssl_certificate_key' in servername.server[0].attrs.keys()):
+                del servername.server[0].attrs['ssl_certificate_key']
         
         # add standard lines
         servername.server[0].attrs['server_name'][0] = urlDomain
@@ -90,6 +98,10 @@ class Layer7Proxy:
         if (includes is not None):
             for include in includes:
                 servername.server[0].addAttr('include', include)
+        else:
+            # remove the includes
+            if ('include' in servername.server[0].attrs.keys()):
+                del servername.server[0].attrs['include']
 
         # add the location block
         try:
@@ -99,7 +111,7 @@ class Layer7Proxy:
             servername.server[0].addBlock('location', urlDirectory)
         
         # include websockets if requested, otherwise include http/https include file
-        if (websocket is not None):
+        if (websocket):
             servername.server[0].location[urlDirectory].attrs['include'][0] = 'proxy_pass/ws_wss'
         else:
             servername.server[0].location[urlDirectory].attrs['include'][0] = 'proxy_pass/http_https'
@@ -107,6 +119,10 @@ class Layer7Proxy:
         # add maxfilesize if requested
         if (maxFileSize is not None):
             servername.server[0].location[urlDirectory].attrs['client_max_body_size'][0] = maxFileSize
+        else:
+            # check if its already been applied and remove it
+            if ('client_max_body_size' in servername.server[0].location[urlDirectory].attrs.keys()):
+                del servername.server[0].location[urlDirectory].attrs['client_max_body_size']
         
         # if errorresponse is true then set up tredlys error pages, otherwise the containers page will be used
         if (errorResponse):
@@ -123,15 +139,18 @@ class Layer7Proxy:
         servername.server[0].location[urlDirectory].attrs['proxy_pass'][0] = protocol + "://" + upstreamFilename
         
         ######################
-        # Set up error docs
+        # Set up error docs location block
         try:
             servername.server[0].location['/tredly_error_docs']
         except (KeyError, TypeError):
             # not defined, so define it
             servername.server[0].addBlock('location', '/tredly_error_docs')
-            servername.server[0].location['/tredly_error_docs'].attrs['alias'][0] = '/usr/local/etc/nginx/tredly_error_docs'
-            servername.server[0].location['/tredly_error_docs'].attrs['log_not_found'][0] = 'off'
-            servername.server[0].location['/tredly_error_docs'].attrs['access_log'][0] = 'off'
+        
+        # set/overwrite the values
+        servername.server[0].location['/tredly_error_docs'].attrs['alias'][0] = '/usr/local/etc/nginx/tredly_error_docs'
+        servername.server[0].location['/tredly_error_docs'].attrs['log_not_found'][0] = 'off'
+        servername.server[0].location['/tredly_error_docs'].attrs['access_log'][0] = 'off'
+        servername.server[0].location['/tredly_error_docs'].attrs['internal'][0] = None
             
         # save the file
         if (not servername.saveFile()):
@@ -179,7 +198,7 @@ class Layer7Proxy:
         
         # split out the redirect to parts
         redirectToProtocol = redirectTo.split('://')[0]
-        redirectToDomain = redirectTo.split('://')[1].rstrip('/')
+        redirectToDomain = redirectTo.split('://')[1].rstrip('/').split('/',1)[0]
         
         # form the file path - remove trailing slash, and replace dashes with dots
         filePath = "/usr/local/etc/nginx/server_name/" + redirectFromProtocol + '-' + nginxFormatFilename(urlDomain.rstrip('/'))
@@ -204,6 +223,14 @@ class Layer7Proxy:
             servernameRedirect.server[0].attrs['ssl'][0] = "on"
             servernameRedirect.server[0].attrs['ssl_certificate'][0] = redirectFromSslCert
             servernameRedirect.server[0].attrs['ssl_certificate_key'][0] = redirectFromSslKey
+        else:
+            # remove the ssl entries
+            if ('ssl' in servernameRedirect.server[0].attrs.keys()):
+                del servernameRedirect.server[0].attrs['ssl']
+            if ('ssl_certificate' in servernameRedirect.server[0].attrs.keys()):
+                del servernameRedirect.server[0].attrs['ssl_certificate']
+            if ('ssl_certificate_key' in servernameRedirect.server[0].attrs.keys()):
+                del servernameRedirect.server[0].attrs['ssl_certificate_key']
         
         # add the location block if it doesnt exist
         try:

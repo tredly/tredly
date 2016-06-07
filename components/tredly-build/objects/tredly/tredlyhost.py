@@ -187,7 +187,7 @@ class TredlyHost:
         # return none if nothing found
         return None
     
-    # searchs for all containers that have a given array
+    # searches for all containers that have a given array
     def getContainersWithArray(self, datasetProperty, url):
         # form the base dataset to search in
         dataset = ZFS_TREDLY_PARTITIONS_DATASET
@@ -198,7 +198,6 @@ class TredlyHost:
         
         # convert stdout to string
         stdOutString = stdOut.decode("utf-8").strip()
-        
         uuids = []
         
         # loop over the results looking for our dataset
@@ -211,11 +210,12 @@ class TredlyHost:
 
                 # match 2nd element to the url
                 # and the 3rd element to the dataset proeprty name
-                if (lineElements[1] == url) and (re.match(datasetProperty + ":\d+", lineElements[2])):
+                if (lineElements[1] == url) and (re.match(datasetProperty + ':\d+$', lineElements[2])):
                     # found it so extract the uuid from the first element and append to our array
                     uuids.append(lineElements[0].split('/')[-1])
-        # return
-        return uuids
+        
+        # return a set as we are only after unique values
+        return set(uuids)
     
     # finds the uuid of a container with containername
     def getUUIDFromContainerName(self, partitionName, containerName):

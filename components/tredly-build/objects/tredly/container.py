@@ -315,6 +315,22 @@ class Container:
             self.mountFdescfs = builtins.tredlyFile.json['container']['technicalOptions']['mount.fdescfs']
         except KeyError:
             self.mountFdescfs = CONTAINER_OPTIONS['mount.fdescfs']
+        
+        
+        # add a http -> https redirect for each url if the url is https and one hasnt already been added
+        for i, url in enumerate(self.urls):
+            foundRedirect = False
+            # check if cert is set
+            if (url['cert'] is not None):
+                # loop over redirects and look for this url
+                for redirect in url['redirects']:
+                    if (redirect['url'] == 'http://' + url['url']):
+                        foundRedirect = True
+                
+                # didnt find it so add an extra object in to handle http to https redirection
+                if (not foundRedirect):
+                    self.urls[i]['redirects'].append({'cert': None, 'url': 'http://' + url['url']})
+        
 
         return True
 
@@ -329,6 +345,42 @@ class Container:
     # Return: True if succeeded, False otherwise
     def create(self):
         tredlyHost = TredlyHost()
+        
+        # ################# 
+        # Pre flight checks
+        # set up a set of certs to copy so we can validate that they exist,a nd then copy them in
+        certsToCopy = set() # use a set for unique values
+        for url in builtins.tredlyFile.json['container']['proxy']['layer7Proxy']:
+            if (url['cert'] is not None):
+                # add to the list
+                certsToCopy.add(url['cert'])
+            
+            # add any redirect certs too
+            for redirect in url['redirects']:
+                if (redirect['cert'] is not None):
+                    certsToCopy.add(redirect['cert'])
+        
+        # make sure they exist
+        for cert in certsToCopy:
+            if (cert.startswith("partition/")):
+                # set the path to the cert
+                certPath = TREDLY_PARTITIONS_MOUNT + "/" + self.partitionName + "/" + TREDLY_PTN_DATA_DIR_NAME + cert.lstrip('partition').rstrip('/')
+            elif (cert.startswith("/")):
+                certPath = builtins.tredlyFile.fileLocation + cert.rstrip('/')
+            else:
+                e_error("Invalid certificate definition " + cert)
+                return False
+        
+            # check for server.crt and server.key
+            if (not os.path.isfile(certPath + '/server.crt')):
+                e_error("Missing server.crt in " + certPath + ' for cert ' + cert)
+                return False
+            if (not os.path.isfile(certPath + '/server.key')):
+                e_error("Missing server.key in " + certPath + ' for cert ' + cert)
+                return False
+        
+        # End pre flight checks
+        #################
         
         # generate a UUID for this container
         containerExists = True
@@ -559,7 +611,7 @@ class Container:
         # jsonify the urls individually and append to array
         for url in self.urls:
             # jsonify the url and minify it, then append to zfs array
-            zfsContainer.appendArray(ZFS_PROP_ROOT + ".jsonurls", json.dumps(url, separators=(',',':')))
+            zfsContainer.appendJsonArray(ZFS_PROP_ROOT + ".jsonurls", url)
 
 
         # loop over urls and register
@@ -599,14 +651,10 @@ class Container:
 
             zfsContainer.appendArray(ZFS_PROP_ROOT + ".registered_dns_names", urlDomain)
             
-            # check if a cert wqs issued for the url, and if so then create a http redirect
-            if (sslCert is not None):
-                zfsContainer.appendArray(ZFS_PROP_ROOT + ".redirect_url", 'http://' + urlObj['url'])
-
             for redirectFrom in urlObj['redirects']:
                 zfsContainer.appendArray(ZFS_PROP_ROOT + ".redirect_url", redirectFrom['url'])
 
-                zfsContainer.appendArray(ZFS_PROP_ROOT + ".registered_dns_names", redirectFrom['url'].split('://',1)[1])
+                zfsContainer.appendArray(ZFS_PROP_ROOT + ".registered_dns_names", redirectFrom['url'].split('://',1)[1].split('/',1)[0])
         return True
 
 
@@ -675,35 +723,7 @@ class Container:
         
         # load the jsoned urls
         self.urls = zfsContainer.getJsonArray(ZFS_PROP_ROOT + ".jsonurls")
-        '''
-        # get the url info to turn into JSON
-        urls = zfsContainer.getArray(ZFS_PROP_ROOT + ".url")
-        urlCerts = zfsContainer.getArray(ZFS_PROP_ROOT + ".url_cert")
-        redirectUrls = zfsContainer.getArray(ZFS_PROP_ROOT + ".redirect_url")
-        redirectUrlCerts = zfsContainer.getArray(ZFS_PROP_ROOT + ".redirect_url_cert")
-        
 
-        
-        # create json from the zfs urls
-        urlArray = []
-        for i, value in urls.items():
-            # TODO: include the redirects in here
-            redirects = []
-            
-            try:
-                urlCert = urlCerts[str(i)]
-            except KeyError:
-                urlCert = None
-            
-            urlArray.append({
-                'cert': urlCert,
-                'maxFileSize': None,
-                'redirects': redirects,
-                'url': value,
-                'websocket': None
-            })
-        self.urls = urlArray
-        '''
         
         self.layer4ProxyTcp = zfsContainer.getArray(ZFS_PROP_ROOT + ".layer4proxytcp")
         self.layer4ProxyUdp = zfsContainer.getArray(ZFS_PROP_ROOT + ".layer4proxyudp")
@@ -1273,7 +1293,7 @@ class Container:
         
         zfsContainer = ZFSDataset(self.dataset, self.mountPoint)
         
-        # return true if we're already stopped
+        # return true if container already stopped
         if (not self.isRunning()):
             return True
         
@@ -1300,8 +1320,6 @@ class Container:
         
 
         # get the url certs from zfs
-        # TODO: once the urls are populated correctly via JSON from loadfromzfs, remove this
-        redirectUrls = zfsContainer.getArray(ZFS_PROP_ROOT + ".redirect_url")
         reloadNginx = False
         # loop over the upstream files and delete all lines containing this ip
         for upstreamFilename in self.nginxUpstreamFiles.values():
@@ -1360,7 +1378,7 @@ class Container:
                                 if (len(servernameFile.blocks['server'][0].blocks['location']) == 0):
                                     del servernameFile.blocks['server'][0]
                             except:
-                                print("error docs location not found")
+                                e_warning("Error docs location not found")
                             
                         if (not servernameFile.saveFile()):
                             e_error("Failed to save server name file")
@@ -1369,53 +1387,51 @@ class Container:
                     except:
                         print("Location not found")
 
-            # remove the redirect urls
-            # TODO: These should come from container object and potentially be destroyed above
-            # this requires a structure change in the container object in a future version
-            for redirectUrl in redirectUrls.values():
-                # split up the domain and directory parts of the url
-                url = redirectUrl.split('://')[1]
-                if ('/' in url.rstrip('/')):
-                    
-                    urlDomain = url.split('/', 1)[0]
-                    urlDirectory = '/' + url.split('/', 1)[1]
-                else:
-                    urlDomain = url
-                    urlDirectory = '/'
-                    
-                protocol = redirectUrl.split('://')[0]
-    
-                redirectUrlFile = nginxFormatFilename(protocol + '://' + urlDomain)
-    
-                redirectServernameFile = NginxBlock(None, None, self.nginxServernameDir.rstrip('/') + '/' + nginxFormatFilename(redirectUrlFile))
-                redirectServernameFile.loadFile()
-    
-                # check if any other containers are using this redirect url
-                
-                containersWithUrl = tredlyHost.getContainersWithArray(ZFS_PROP_ROOT + '.redirect_url', redirectUrl)
-                
-                # remove our uuid from this list
-                containersWithUrl.remove(self.uuid)
-    
-                # if no other containers are using this url then delete the location block
-                if (len(containersWithUrl) == 0):
-                    try:
-                        del redirectServernameFile.blocks['server'][0].blocks['location'][urlDirectory]
-                    except: 
-                        e_error("Location block " + urlDirectory + " not found")
-                    
-                    try:
-                        # check if there are now no location blocks listed
-                        if (len(redirectServernameFile.blocks['server'][0].blocks['location']) == 0):
-                            del redirectServernameFile.blocks['server'][0]
-                    except:
-                        e_error("No server block found")
-                    
-                    # save it
-                    if (not redirectServernameFile.saveFile()):
-                        e_error("Failed to save redirect file")
+                # remove the redirect urls
+                for redirectUrl in urlObj['redirects']:
+                    # split up the domain and directory parts of the url
+                    url = redirectUrl['url'].split('://')[1]
+                    if ('/' in url.rstrip('/')):
+                        
+                        urlDomain = url.split('/', 1)[0]
+                        urlDirectory = '/' + url.split('/', 1)[1]
                     else:
-                        reloadNginx = True
+                        urlDomain = url
+                        urlDirectory = '/'
+                    
+                    protocol = redirectUrl['url'].split('://')[0]
+        
+                    redirectUrlFile = nginxFormatFilename(protocol + '://' + urlDomain)
+        
+                    redirectServernameFile = NginxBlock(None, None, self.nginxServernameDir.rstrip('/') + '/' + nginxFormatFilename(redirectUrlFile))
+                    redirectServernameFile.loadFile()
+
+                    # check if any other containers are using this redirect url
+                    
+                    containersWithUrl = tredlyHost.getContainersWithArray(ZFS_PROP_ROOT + '.redirect_url', redirectUrl['url'])
+                    
+                    # remove our uuid from this list
+                    containersWithUrl.remove(self.uuid)
+                    
+                    # if no other containers are using this url then delete the location block
+                    if (len(containersWithUrl) == 0):
+                        try:
+                            del redirectServernameFile.blocks['server'][0].blocks['location'][urlDirectory]
+                        except: 
+                            e_error("Location block " + urlDirectory + " not found")
+                        
+                        try:
+                            # check if there are now no location blocks listed
+                            if (len(redirectServernameFile.blocks['server'][0].blocks['location']) == 0):
+                                del redirectServernameFile.blocks['server'][0]
+                        except:
+                            e_error("No server block found")
+                        
+                        # save it
+                        if (not redirectServernameFile.saveFile()):
+                            e_error("Failed to save redirect file")
+                        else:
+                            reloadNginx = True
 
         # clean up the access file if it exists
         accessFile = self.nginxServernameDir.rstrip('/') + '/' + nginxFormatFilename(self.uuid)
@@ -1815,14 +1831,9 @@ class Container:
     
     # run a command within this container
     def runCmd(self, command):
-        
-        # split it up so we can pass to popen
-        #cmd = command.split()
-        
         # add a jexec before the command passed to us
-        command = "jexec trd-" + self.uuid + ' sh -c "' + command + '"'
-        # TODO: move oncreate commands to an oncreate script, remove shell=true below as it is a security risk. note that this behaviour allows shell injection in the same way as the bash version. This needs a fix once we move away from bash building
-        process = Popen(command,  stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=True)
+        command = ['jexec', 'trd-' + self.uuid, 'sh', '-c', command]
+        process = Popen(command,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
         stdOut, stdErr = process.communicate()
         if (process.returncode != 0):
             # errored
@@ -1928,8 +1939,6 @@ class Container:
     
     # registers any urls in layer 7 proxy that this container responds to
     def registerLayer7URLs(self):
-        # TODO: recycle this code for reuse into the layer7proxy object
-        
         e_note('Configuring layer 7 Proxy (HTTP) for ' + self.name)
         # set up ZFS access to container dataset
         zfsContainer = ZFSDataset(self.dataset, self.mountPoint)
@@ -2008,14 +2017,13 @@ class Container:
                 redirectToProtocol = "http"
             else:
                 redirectToProtocol = "https"
-                if (not layer7Proxy.registerUrlRedirect(urlObj['url'], 'https://' + urlObj['url'])):
-                    e_error("Failed to register HTTP to HTTPS redirect for " + urlObj['url'])
-                    
 
             # set up Redirects
             redirectTo = urlObj['url']
             for redirectFrom in urlObj['redirects']:
-                redirectFromDomain = redirectFrom['url'].split('://')[-1]
+                redirectFromDomain = redirectFrom['url'].split('://', 1)[1].split('/', 1)[0]
+                redirectFromDirectory = redirectFrom['url'].split('://', 1)[1].split('/', 1)[1]
+                redirectFromUrl = redirectFromDomain + '/' + redirectFromDirectory
                 
                 # set the paths if the cert is set
                 if (redirectFrom['cert'] is not None):
@@ -2028,7 +2036,7 @@ class Container:
                     redirectFromProtocol = "http"
                 
                 # register the redirect
-                if (not layer7Proxy.registerUrlRedirect(redirectFromDomain, redirectToProtocol + '://' + redirectTo, sslCert, sslKey)):
+                if (not layer7Proxy.registerUrlRedirect(redirectFromUrl, redirectToProtocol + '://' + redirectTo, sslCert, sslKey)):
                     e_error("Failed to register redirect from " + redirectFrom['url'] + " to " + urlObj['url'])
                 
                 # Register this URL in DNS

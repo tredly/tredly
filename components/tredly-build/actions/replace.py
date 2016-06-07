@@ -17,10 +17,7 @@ from objects.layer4proxy.layer4proxyfile import *
 from datetime import datetime, timedelta
 import shutil
 
-from actions.create import *
-from actions.destroy import *
-
-# destroy a container
+# replace a container
 def actionReplaceContainer(containerName, uuidToReplace, partitionName, tredlyFilePath, ip4Addr = None):
     tredlyHost = TredlyHost()
     
@@ -43,10 +40,26 @@ def actionReplaceContainer(containerName, uuidToReplace, partitionName, tredlyFi
     
     # End pre flight checks
     ###############################
+    # set up networking
+    containerIp4 = None
+    containerCidr = None
+    containerInterface = None
+    
+    # check if ip4Addr was received and process it
+    if (ip4Addr is not None):
+        # ip4Addr is in the form "bridge0|192.168.0.2/24"
+        regex = '^(\w+)\|([\w.]+)\/(\d+)$'
+        m = re.match(regex, ip4Addr)
+        
+        if (m is not None):
+            # assign from regex match
+            containerInterface = m.group(1)
+            containerIp4 = m.group(2)
+            containerCidr = m.group(3)
+    
     
     # process the tredlyfile
     builtins.tredlyFile = TredlyFile(tredlyFilePath + "/Tredlyfile")
-    #pprint(builtins.tredlyFile.json)
 
     # set the new container name'
     if (containerName is None):
@@ -71,9 +84,8 @@ def actionReplaceContainer(containerName, uuidToReplace, partitionName, tredlyFi
         oldContainerDataset = ZFS_TREDLY_PARTITIONS_DATASET + '/' + partitionName + '/' + TREDLY_CONTAINER_DIR_NAME + '/' + oldContainerUUID
         zfsOldContainer = ZFSDataset(oldContainerDataset)
         oldContainerName = zfsOldContainer.getProperty(ZFS_PROP_ROOT + ':containername')
-        
         e_header("Replacing Container " + oldContainerName + " with " + newContainerName)
-        
+    
         # change the name of the old container
         if (not zfsOldContainer.setProperty(ZFS_PROP_ROOT + ':containername', oldContainerName + '-REPLACING')):
             e_error("Failed to rename old container")
@@ -81,11 +93,64 @@ def actionReplaceContainer(containerName, uuidToReplace, partitionName, tredlyFi
         if (not zfsOldContainer.setProperty(ZFS_PROP_ROOT + ':containerstate', 'replacing')):
             e_error("Failed to set container state")
         
+    startReplaceEpoch = int(time.time())
+    e_note("Replace started at " + time.strftime('%Y-%m-%d %H:%M:%S %z', time.localtime(startReplaceEpoch)))
     
+    zfsTredly = ZFSDataset(ZFS_TREDLY_DATASET)
+    defaultRelease = zfsTredly.getProperty(ZFS_PROP_ROOT + ':default_release_name')
     # create the container
-    actionCreateContainer(newContainerName, partitionName, tredlyFilePath, ip4Addr, True)
+    # get a container object
+    newContainer = Container(partitionName, defaultRelease)
+    
+    # populate the data from tredlyfile
+    newContainer.loadFromTredlyfile()
+    
+    # set the correct container name if it was passed to us
+    if (containerName is not None):
+        newContainer.name = containerName
 
+    e_header("Creating Container - " + newContainer.name + ' in partition ' + newContainer.partitionName)
+    
+    # create container on the filesystem
+    if (not newContainer.create()):
+        # container create failed so rename the old container back
+        e_error("Failed to create new container")
+        # set the name back 
+        zfsOldContainer.setProperty(ZFS_PROP_ROOT + ':containername', oldContainerName)
+    
+    # start the container
+    newContainer.start(containerInterface, containerIp4, containerCidr)
     
     # destroy the old container if it exists on this partition
     if (tredlyHost.containerExists(oldContainerUUID, partitionName)):
-        actionDestroyContainer(oldContainerUUID)
+        # load the container from ZFS
+        oldContainer = Container()
+        
+        # set up the dataset name that contains this containers data
+        oldContainerDataset = ZFS_TREDLY_PARTITIONS_DATASET + "/" + partitionName + "/" + TREDLY_CONTAINER_DIR_NAME + "/" + oldContainerUUID
+        
+        # make the container populate itself from zfs
+        oldContainer.loadFromZFS(oldContainerDataset)
+        # make sure the uuid is populated
+        if (oldContainer.uuid is None):
+            oldContainer.uuid = uuid
+        
+        startDestructEpoch = int(time.time())
+        e_header("Destroying Container - " + oldContainer.name)
+        
+        # run through the stop process
+        oldContainer.stop()
+
+        # destroy the container
+        e_note("Destroying container " + str(oldContainer.name))
+        if (oldContainer.destroy()):
+            e_success("Success")
+        else:
+            e_error("Failed")
+        
+    endReplaceEpoch = int(time.time())
+    e_success("Replace completed at " + time.strftime('%Y-%m-%d %H:%M:%S %z', time.localtime(endReplaceEpoch)))
+    timeTaken = endReplaceEpoch - startReplaceEpoch
+    e_success("Total time taken: " + str(timeTaken) + " seconds")
+    
+    return True
