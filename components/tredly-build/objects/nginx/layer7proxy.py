@@ -30,9 +30,9 @@ class Layer7Proxy:
         # split the url into its domain and directory parts
         if ('/' in url.rstrip('/')):
             urlDomain = url.split('/', 1)[0]
-            urlDirectory = '/' + url.split('/', 1)[1]
+            urlDirectory = '/' + url.split('/', 1)[1].rstrip('/') + '/'
         else:
-            urlDomain = url
+            urlDomain = url.rstrip('/')
             urlDirectory = '/'
 
         # work out which protocol we are redirecting FROM
@@ -180,12 +180,13 @@ class Layer7Proxy:
 
     # Registers a URL redirection in layer 7 proxy
     def registerUrlRedirect(self, redirectFrom, redirectTo, redirectFromSslCert = None, redirectFromSslKey = None):
+        
         # split the url into its domain and directory parts
         if ('/' in redirectFrom.rstrip('/')):
             urlDomain = redirectFrom.split('/', 1)[0]
-            urlDirectory = '/' + redirectFrom.split('/', 1)[1]
+            urlDirectory = '/' + redirectFrom.split('/', 1)[1].rstrip('/') + '/'
         else:
-            urlDomain = redirectFrom
+            urlDomain = redirectFrom.rstrip('/')
             urlDirectory = '/'
 
         # work out which protocol we are redirecting FROM

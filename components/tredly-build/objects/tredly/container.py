@@ -1353,7 +1353,7 @@ class Container:
                 # split up the domain and directory parts of the url
                 if ('/' in urlObj['url'].rstrip('/')):
                     urlDomain = urlObj['url'].split('/', 1)[0]
-                    urlDirectory = '/' + urlObj['url'].split('/', 1)[1]
+                    urlDirectory = '/' + urlObj['url'].split('/', 1)[1].rstrip('/') + '/'
                 else:
                     urlDomain = urlObj['url']
                     urlDirectory = '/'
@@ -1385,16 +1385,15 @@ class Container:
                         else:
                             reloadNginx = True
                     except:
-                        print("Location not found")
+                        print('Location ' + urlDirectory + ' not found')
 
                 # remove the redirect urls
                 for redirectUrl in urlObj['redirects']:
                     # split up the domain and directory parts of the url
                     url = redirectUrl['url'].split('://')[1]
                     if ('/' in url.rstrip('/')):
-                        
                         urlDomain = url.split('/', 1)[0]
-                        urlDirectory = '/' + url.split('/', 1)[1]
+                        urlDirectory = '/' + url.split('/', 1)[1].rstrip('/') + '/'
                     else:
                         urlDomain = url
                         urlDirectory = '/'
@@ -2022,13 +2021,14 @@ class Container:
             redirectTo = urlObj['url']
             for redirectFrom in urlObj['redirects']:
                 redirectFromDomain = redirectFrom['url'].split('://', 1)[1].split('/', 1)[0]
-                # set up the directory
-                if ('/' in redirectFromDomain):
-                    redirectFromDirectory = redirectFrom['url'].split('://', 1)[1].split('/', 1)[1]
+                
+                # set up the directory - strip off the protocol and search for a /
+                if ('/' in redirectFrom['url'].split('://', 1)[1]):
+                    redirectFromDirectory = '/' + redirectFrom['url'].split('://', 1)[1].split('/', 1)[1].rstrip('/') + '/'
                 else:
                     redirectFromDirectory = '/'
                 
-                redirectFromUrl = redirectFromDomain + '/' + redirectFromDirectory
+                redirectFromUrl = redirectFromDomain + redirectFromDirectory
                 
                 # set the paths if the cert is set
                 if (redirectFrom['cert'] is not None):
