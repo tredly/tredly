@@ -142,7 +142,7 @@ if (args.action == "create") and (args.subject == "container"): # create contain
 elif (args.action == "destroy") and (args.subject == "container"):  # destroy container
     # destroy the container
     actionDestroyContainer(args.target)
-    
+
 elif (args.action == "replace") and (args.subject == "container"):  # replace container
     # replace the container
     actionReplaceContainer(args.containerName, args.identifier, args.target, path, args.ip4_addr)
@@ -158,7 +158,6 @@ elif (args.action == "stop") and (args.subject == "container"):  # replace conta
 elif (args.action == "version"):
     # print the version
     print(SCRIPTNAME + ": version " + VERSION_NUMBER + " (built " + VERSION_DATE + ")")
-    
 else:
     e_error("Command " + args.action + " not found")
     exit(1)

@@ -34,6 +34,8 @@ fi
 # load the config file
 _TREDLY_DIR_CONF="${_DIR}/conf"
 common_conf_parse "install"
+# ensure required fields are set
+common_conf_validate "enableSSHD,enableAPI,enableCommandCenter,tredlyApiGit,tredlyApiBranch,tredlyCCGit,tredlyCCBranch,downloadKernelSource"
 
 _configOptions[0]=''
 # check if some values are set, and if they arent then consult the host for the details
@@ -169,18 +171,33 @@ e_note "Installing Packages"
 _exitCode=0
 pkg install -y vim-lite | tee -a "${_LOGFILE}"
 _exitCode=$(( ${PIPESTATUS[0]} & $? ))
+if [[ ${_exitCode} -ne 0 ]]; then
+    exit_with_error "Failed to download vim-lite"
+fi
 pkg install -y rsync | tee -a "${_LOGFILE}"
 _exitCode=$(( ${PIPESTATUS[0]} & $? ))
+if [[ ${_exitCode} -ne 0 ]]; then
+    exit_with_error "Failed to download rsync"
+fi
 pkg install -y openntpd | tee -a "${_LOGFILE}"
 _exitCode=$(( ${PIPESTATUS[0]} & $? ))
+if [[ ${_exitCode} -ne 0 ]]; then
+    exit_with_error "Failed to download openntpd"
+fi
 pkg install -y git | tee -a "${_LOGFILE}"
-_exitCode=$(( ${PIPESTATUS[0]} & $? ))
-pkg install -y python35 | tee -a "${_LOGFILE}"
-_exitCode=$(( ${PIPESTATUS[0]} & $? ))
-pkg install -y py27-fail2ban | tee -a "${_LOGFILE}"
 _exitCode=$(( ${PIPESTATUS[0]} & $? ))
 if [[ ${_exitCode} -ne 0 ]]; then
     exit_with_error "Failed to download git"
+fi
+pkg install -y python35 | tee -a "${_LOGFILE}"
+_exitCode=$(( ${PIPESTATUS[0]} & $? ))
+if [[ ${_exitCode} -ne 0 ]]; then
+    exit_with_error "Failed to download python 3.5"
+fi
+pkg install -y py27-fail2ban | tee -a "${_LOGFILE}"
+_exitCode=$(( ${PIPESTATUS[0]} & $? ))
+if [[ ${_exitCode} -ne 0 ]]; then
+    exit_with_error "Failed to download fail2ban"
 fi
 pkg install -y nginx | tee -a "${_LOGFILE}"
 _exitCode=$(( ${PIPESTATUS[0]} & $? ))
@@ -192,6 +209,7 @@ _exitCode=$(( ${PIPESTATUS[0]} & $? ))
 if [[ ${_exitCode} -ne 0 ]]; then
     exit_with_error "Failed to download Unbound"
 fi
+
 if [[ ${_exitCode} -eq 0 ]]; then
     e_success "Success"
 else
@@ -200,24 +218,36 @@ fi
 
 ##########
 
-# Configure SSH
-_exitCode=0
-e_note "Configuring SSHD"
+# check if user wanted to enable SSHD or not
+if [[ $( str_to_lower "${_CONF_COMMON[enableSSHD]}") == 'yes' ]]; then
+    # Configure SSH
+    _exitCode=0
+    e_note "Configuring SSHD"
 
-if [[ -f "/etc/ssh/sshd_config" ]]; then
-    mv /etc/ssh/sshd_config /etc/ssh/sshd_config.old
-fi
-
-_exitCode=$(( ${_exitCode} & $? ))
-cp ${_DIR}/os/sshd_config /etc/ssh/sshd_config
-_exitCode=$(( ${_exitCode} & $? ))
-# change the networking data for ssh
-sed -i '' "s|ListenAddress .*|ListenAddress ${_configOptions[2]}|g" "/etc/ssh/sshd_config"
-_exitCode=$(( ${_exitCode} & $? ))
-if [[ ${_exitCode} -eq 0 ]]; then
-    e_success "Success"
+    # if the user has their own sshd config then preserve it
+    if [[ -f "/etc/ssh/sshd_config" ]]; then
+        mv /etc/ssh/sshd_config /etc/ssh/sshd_config.old
+        _exitCode=$(( ${_exitCode} & $? ))
+    fi
+    
+    cp ${_DIR}/os/sshd_config /etc/ssh/sshd_config
+    _exitCode=$(( ${_exitCode} & $? ))
+    
+    # change the networking data for ssh
+    sed -i '' "s|ListenAddress .*|ListenAddress ${_configOptions[2]}|g" "/etc/ssh/sshd_config"
+    _exitCode=$(( ${_exitCode} & $? ))
+    
+    # enable it in rc.conf
+    echo 'sshd_enable="YES"' >> /etc/rc.conf
+    _exitCode=$(( ${_exitCode} & $? ))
+    
+    if [[ ${_exitCode} -eq 0 ]]; then
+        e_success "Success"
+    else
+        e_error "Failed"
+    fi
 else
-    e_error "Failed"
+    e_note "Skipping configuration of SSHD"
 fi
 
 ##########
@@ -436,10 +466,8 @@ else
 fi
 
 ##########
-
-if [[ -z "${_CONF_COMMON[tredlyApiGit]}" ]]; then
-    e_note "Skipping Tredly-API"
-else
+# if the user wanted to install the api then go ahead
+if [[ $( str_to_lower "${_CONF_COMMON[enableAPI]}") == 'yes' ]]; then
     # set up tredly api
     e_note "Configuring Tredly-API"
     _exitCode=1
@@ -465,6 +493,38 @@ else
     else
         e_error "Failed"
     fi
+else
+    e_note "Skipping Tredly-API Installation"
+fi
+
+# install command center if user requested it
+if [[ $( str_to_lower "${_CONF_COMMON[enableCommandCenter]}") == 'yes' ]]; then
+    e_note "Configuring Tredly Command Center"
+    _exitCode=1
+    cd /tmp
+    # if the directory for tredly-cc already exists, then delete it and start again
+    if [[ -d "/tmp/tredly-cc" ]]; then
+        echo "Cleaning previously downloaded Tredly Command Center"
+        rm -rf /tmp/tredly-cc
+    fi
+
+    while [[ ${_exitCode} -ne 0 ]]; do
+        git clone -b "${_CONF_COMMON[tredlyCCBranch]}" "${_CONF_COMMON[tredlyCCGit]}"
+        _exitCode=$?
+    done
+
+    cd /tmp/tredly-cc
+    
+    # install the Command Center
+    ./install.sh
+    
+    if [[ $? -eq 0 ]]; then
+        e_success "Success"
+    else
+        e_error "Failed"
+    fi
+else
+    e_note "Skipping Tredly Command Center Installation"
 fi
 
 ##########
