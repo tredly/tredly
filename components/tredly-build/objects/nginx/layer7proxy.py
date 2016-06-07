@@ -26,7 +26,7 @@ class Layer7Proxy:
     
     # sslCert - the path to the cert, eg ssl/stage/star.tld.com/server.crt
     #sslKey - the path to the key, eg ssl/stage/star.tld.com/server.key
-    def registerUrl(self, url, ip4, maxFileSize, websocket, servernameFilename, upstreamFilename, sslCert = None, sslKey = None, includes = None):
+    def registerUrl(self, url, ip4, maxFileSize, websocket, servernameFilename, upstreamFilename, errorResponse, sslCert = None, sslKey = None, includes = None):
         # split the url into its domain and directory parts
         if ('/' in url.rstrip('/')):
             urlDomain = url.split('/', 1)[0]
@@ -108,6 +108,17 @@ class Layer7Proxy:
         if (maxFileSize is not None):
             servername.server[0].location[urlDirectory].attrs['client_max_body_size'][0] = maxFileSize
         
+        # if errorresponse is true then set up tredlys error pages, otherwise the containers page will be used
+        if (errorResponse):
+            # include 404 page for this URL
+            servername.server[0].location[urlDirectory].attrs['error_page'][0] = '404 /tredly_error_docs/404.html'
+        else:
+            # check if its already been applied and remove it
+            if ('error_page' in servername.server[0].location[urlDirectory].attrs.keys()):
+                del servername.server[0].location[urlDirectory].attrs['error_page']
+                
+        
+        
         # add the proxy pass attr
         servername.server[0].location[urlDirectory].attrs['proxy_pass'][0] = protocol + "://" + upstreamFilename
         
@@ -122,9 +133,6 @@ class Layer7Proxy:
             servername.server[0].location['/tredly_error_docs'].attrs['log_not_found'][0] = 'off'
             servername.server[0].location['/tredly_error_docs'].attrs['access_log'][0] = 'off'
             
-        # include 404 page for this URL
-        servername.server[0].attrs['error_page'][0] = '404 /tredly_error_docs/404.html'
-        
         # save the file
         if (not servername.saveFile()):
             return False

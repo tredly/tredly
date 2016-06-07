@@ -49,7 +49,9 @@ def actionStopContainer(uuid):
     
     # make the container populate itself from zfs
     container.loadFromZFS(containerDataset)
-    
+    if (container.uuid is None):
+        container.uuid = uuid
+        
     zfsContainer = ZFSDataset(container.dataset, container.mountPoint)
     
     e_header("Stopping Container - " + container.name)

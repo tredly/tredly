@@ -125,6 +125,7 @@ class Container:
         
         self.hostInterface = None
         self.containerInterfaces = []
+
     # populates this object with data from a tredlyfile
     def loadFromTredlyfile(self):
         # populate from the Tredlyfile
@@ -742,6 +743,11 @@ class Container:
         # read the rules in
         self.firewall.readRules()
         
+        
+        # do some error checking
+        if (self.name is None):
+            self.name = "noname"
+        
         return True
 
     # Action: destroy this container
@@ -1277,13 +1283,13 @@ class Container:
         for dnsName in self.registeredDNSNames.values():
             # load the unbound file
             unboundFile = UnboundFile(UNBOUND_CONFIG_DIR + "/" + unboundFormatFilename(dnsName))
-    
+
             # read contents
             unboundFile.read()
-    
+
             # remove the elements for this uuid
             unboundFile.removeElementsByUUID(self.uuid)
-    
+
             returnCode = (returnCode and unboundFile.write())
 
         # print success/failed to the user for DNS update
@@ -1362,6 +1368,7 @@ class Container:
                             reloadNginx = True
                     except:
                         print("Location not found")
+
             # remove the redirect urls
             # TODO: These should come from container object and potentially be destroyed above
             # this requires a structure change in the container object in a future version
@@ -1463,6 +1470,8 @@ class Container:
                     groupMemberDataset = ZFS_TREDLY_PARTITIONS_DATASET + "/" + partitionName + "/" + TREDLY_CONTAINER_DIR_NAME + "/" + memberUUID
                     groupMember = Container()
                     groupMember.loadFromZFS(groupMemberDataset)
+                    if (groupMember.uuid is None):
+                        groupMember.uuid = memberUUID
                     
                     # remove the ip from this containers containergroup members
                     groupMember.firewall.removeFromTable(1, str(self.containerInterfaces[0].ip4Addrs[0].ip))
@@ -1689,7 +1698,7 @@ class Container:
                 e_error("Failed to set maxRam on container " + self.name)
                 return False
             else:
-                e_warning("maxRam property value was set. Setting to " + self.maxRam + "GB")
+                e_warning("maxRam property value was set. Setting to " + self.maxRam)
         else:
             e_warning("maxRam property value was not set. Defaulting to unlimited.")
         
@@ -1714,7 +1723,7 @@ class Container:
             if (not zfsContainer.setProperty("quota", self.maxHdd)):
                 e_error("Failed to set maxHdd on container " + self.name)
             else:
-                e_warning("maxHdd property value was set. Setting to " + self.maxHdd + "GB")
+                e_warning("maxHdd property value was set. Setting to " + self.maxHdd)
         else:
             e_warning("maxHdd property value was not set. Defaulting to unlimited.")
         return True
@@ -1964,7 +1973,7 @@ class Container:
             upstreamFilename = protocol + '-' + nginxFormatFilename(urlObj['url'].rstrip('/'))
 
             # register this URL
-            if (not layer7Proxy.registerUrl(urlObj['url'], str(self.containerInterfaces[0].ip4Addrs[0].ip), urlObj['maxFileSize'], urlObj['enableWebsocket'], servernameFilename, upstreamFilename, sslCert, sslKey, urlIncludes)):
+            if (not layer7Proxy.registerUrl(urlObj['url'], str(self.containerInterfaces[0].ip4Addrs[0].ip), urlObj['maxFileSize'], urlObj['enableWebsocket'], servernameFilename, upstreamFilename, urlObj['errorResponse'], sslCert, sslKey, urlIncludes)):
                 e_error("Failed to register url " + urlObj['url'])
 
             # add container whitelist
@@ -2103,8 +2112,7 @@ class Container:
                 if (line.split()[0] != 'devfs'):
                     # found a line for this container
                     mounts.append(line.split()[2])
-                
-        
+
         return mounts
 
     # unmounts all directories of a container that are currently mounted (minus devfs)

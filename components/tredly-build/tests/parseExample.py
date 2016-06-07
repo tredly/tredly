@@ -5,16 +5,16 @@ import builtins
 
 # get the path to the script
 builtins.scriptDirectory = os.path.dirname(os.path.realpath(__file__))
-
+print(builtins.scriptDirectory)
 # set environment up the same way as tredly-build
-sys.path.insert(0, builtins.scriptDirectory)
-sys.path.insert(0, builtins.scriptDirectory + "/tests")
-sys.path.insert(0, builtins.scriptDirectory + "/actions")
-sys.path.insert(0, builtins.scriptDirectory + "/includes")
-sys.path.insert(0, builtins.scriptDirectory + "/objects")
-sys.path.insert(0, builtins.scriptDirectory + "/tests")
-builtins.tredlyConfDirectory = builtins.scriptDirectory + "/conf"
-builtins.tredlyJsonDirectory = builtins.scriptDirectory + "/json"
+sys.path.insert(0, builtins.scriptDirectory + '/../')
+sys.path.insert(0, builtins.scriptDirectory + "/../tests")
+sys.path.insert(0, builtins.scriptDirectory + "/../actions")
+sys.path.insert(0, builtins.scriptDirectory + "/../includes")
+sys.path.insert(0, builtins.scriptDirectory + "/../objects")
+sys.path.insert(0, builtins.scriptDirectory + "/../tests")
+builtins.tredlyConfDirectory = builtins.scriptDirectory + "/../conf"
+builtins.tredlyJsonDirectory = builtins.scriptDirectory + "/../json"
 
 from objects.tredly.tredlyfile import *
 if (len(sys.argv) is 2):

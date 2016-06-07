@@ -46,6 +46,7 @@ def actionReplaceContainer(containerName, uuidToReplace, partitionName, tredlyFi
     
     # process the tredlyfile
     builtins.tredlyFile = TredlyFile(tredlyFilePath + "/Tredlyfile")
+    #pprint(builtins.tredlyFile.json)
 
     # set the new container name'
     if (containerName is None):
