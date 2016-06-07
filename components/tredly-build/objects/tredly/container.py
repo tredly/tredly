@@ -2022,7 +2022,12 @@ class Container:
             redirectTo = urlObj['url']
             for redirectFrom in urlObj['redirects']:
                 redirectFromDomain = redirectFrom['url'].split('://', 1)[1].split('/', 1)[0]
-                redirectFromDirectory = redirectFrom['url'].split('://', 1)[1].split('/', 1)[1]
+                # set up the directory
+                if ('/' in redirectFromDomain):
+                    redirectFromDirectory = redirectFrom['url'].split('://', 1)[1].split('/', 1)[1]
+                else:
+                    redirectFromDirectory = '/'
+                
                 redirectFromUrl = redirectFromDomain + '/' + redirectFromDirectory
                 
                 # set the paths if the cert is set
