@@ -1698,7 +1698,7 @@ class Container:
                 e_error("Failed to set maxRam on container " + self.name)
                 return False
             else:
-                e_warning("maxRam property value was set. Setting to " + self.maxRam + "GB")
+                e_warning("maxRam property value was set. Setting to " + self.maxRam)
         else:
             e_warning("maxRam property value was not set. Defaulting to unlimited.")
         
@@ -1723,7 +1723,7 @@ class Container:
             if (not zfsContainer.setProperty("quota", self.maxHdd)):
                 e_error("Failed to set maxHdd on container " + self.name)
             else:
-                e_warning("maxHdd property value was set. Setting to " + self.maxHdd + "GB")
+                e_warning("maxHdd property value was set. Setting to " + self.maxHdd)
         else:
             e_warning("maxHdd property value was not set. Defaulting to unlimited.")
         return True
@@ -1973,7 +1973,7 @@ class Container:
             upstreamFilename = protocol + '-' + nginxFormatFilename(urlObj['url'].rstrip('/'))
 
             # register this URL
-            if (not layer7Proxy.registerUrl(urlObj['url'], str(self.containerInterfaces[0].ip4Addrs[0].ip), urlObj['maxFileSize'], urlObj['enableWebsocket'], servernameFilename, upstreamFilename, sslCert, sslKey, urlIncludes)):
+            if (not layer7Proxy.registerUrl(urlObj['url'], str(self.containerInterfaces[0].ip4Addrs[0].ip), urlObj['maxFileSize'], urlObj['enableWebsocket'], servernameFilename, upstreamFilename, urlObj['errorResponse'], sslCert, sslKey, urlIncludes)):
                 e_error("Failed to register url " + urlObj['url'])
 
             # add container whitelist
