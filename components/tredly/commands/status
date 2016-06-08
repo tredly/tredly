@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+# commands require running as root
+cmn_assert_running_as_root
+
+show_help "status
+    ---------
+    Description:
+        Shows the status of certain Tredly services
+
+    Examples:
+        $(basename "$0") status api
+        $(basename "$0") status commandcenter
+        $(basename "$0") status dns
+        $(basename "$0") status layer7proxy
+"
+
+case "${_SUBCOMMANDS[0]}" in
+    api)
+        service tredlyapi status
+    ;;
+    commandcenter)
+        service tredlycc status
+    ;;
+    dns)
+        service unbound status
+    ;;
+    layer7proxy)
+        service nginx status
+    ;;
+    *)
+        exit_with_error "Unknown config command '${_SUBCOMMANDS[0]}'"
+    ;;
+esac
