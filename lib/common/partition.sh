@@ -48,17 +48,26 @@ function partition_create() {
 
         e_note "Creating ZFS dataset"
     fi
+    
     _exitCode=0
+    
     # create the partition
     zfs_create_dataset "${ZFS_TREDLY_PARTITIONS_DATASET}/${_partitionName}" "${TREDLY_PARTITIONS_MOUNT}/${_partitionName}"
     _exitCode=$(( ${_exitCode} & $? ))
+    
     # and the containers dataset
     zfs_create_dataset "${ZFS_TREDLY_PARTITIONS_DATASET}/${_partitionName}/${TREDLY_CONTAINER_DIR_NAME}" "${TREDLY_PARTITIONS_MOUNT}/${_partitionName}/${TREDLY_CONTAINER_DIR_NAME}"
     _exitCode=$(( ${_exitCode} & $? ))
+    
     # and the data dataset
     zfs_create_dataset "${ZFS_TREDLY_PARTITIONS_DATASET}/${_partitionName}/${TREDLY_PTN_DATA_DIR_NAME}" "${TREDLY_PARTITIONS_MOUNT}/${_partitionName}/${TREDLY_PTN_DATA_DIR_NAME}"
     _exitCode=$(( ${_exitCode} & $? ))
-    # create some default directories within this data dataset
+    
+    # and the remote containers dataset
+    zfs_create_dataset "${ZFS_TREDLY_PARTITIONS_DATASET}/${_partitionName}/${TREDLY_PTN_REMOTECONTAINERS_DIR_NAME}" "${TREDLY_PARTITIONS_MOUNT}/${_partitionName}/${TREDLY_PTN_REMOTECONTAINERS_DIR_NAME}"
+    _exitCode=$(( ${_exitCode} & $? ))
+    
+    # create some default directories within the data dataset
     mkdir -p "${TREDLY_PARTITIONS_MOUNT}/${_partitionName}/${TREDLY_PTN_DATA_DIR_NAME}/credentials"
     mkdir -p "${TREDLY_PARTITIONS_MOUNT}/${_partitionName}/${TREDLY_PTN_DATA_DIR_NAME}/scripts"
     mkdir -p "${TREDLY_PARTITIONS_MOUNT}/${_partitionName}/${TREDLY_PTN_DATA_DIR_NAME}/sslCerts"

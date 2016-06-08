@@ -34,6 +34,7 @@ declare ZFS_PROP_ROOT="com.tredly"
 declare TREDLY_DEFAULT_PARTITION="default"
 declare TREDLY_CONTAINER_DIR_NAME="cntr"
 declare TREDLY_PTN_DATA_DIR_NAME="data"
+declare TREDLY_PTN_REMOTECONTAINERS_DIR_NAME="remotecontainers"
 
 # Nginx Proxy
 declare NGINX_BASE_DIR="/usr/local/etc/nginx"

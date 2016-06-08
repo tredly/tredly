@@ -6,6 +6,10 @@ import argparse
 import os.path
 import sys
 import signal
+import urllib.request
+import tarfile
+import ssl
+
 
 # capture the sigint handler
 def sigintHandler(signal, frame):
@@ -50,6 +54,7 @@ from actions.stop import *
 
 # include global modules
 from includes.defines import *
+from includes.util import *
 from includes.output import *
 
 # set some constants
@@ -69,7 +74,8 @@ argParser.add_argument('identifier', nargs='?', help='identifier - uuid etc')
 
 argParser.add_argument('--containerName', help='Override container name')
 argParser.add_argument('--ip4_addr', help='Override container networking. eg --ip4_addr="bridge0|192.168.0.5/24"')
-argParser.add_argument('--path', help='Path to Tredlyfile')
+#argParser.add_argument('--location', help='Path to Tredlyfile. Can be HTTP(S) or a local directory.')
+argParser.add_argument('--path', help='Path to Tredlyfile. Can be HTTP(S) or a local directory.')
 argParser.add_argument('-d', '--debug', action='store_true', help='Enable debug mode')
 argParser.add_argument('--verbose', action='store_true', help='Enable verbose mode')
 argParser.add_argument('-v', '--version', action='store_true', help='Show version')
@@ -85,13 +91,71 @@ if (args.debug):
 if (args.verbose):
     VERBOSE = True
 
+# default partiton name is "default"
+partitionName="default"
+
+# check if a partition/target was specified
+if (args.target is not None):
+    # TODO: make sure this partition exists
+    partitionName = args.target
+
 # use current directory by default
 path=".";
-
-# see if --path was passed and that its an actual directory
-# if not then assume current directory for path
+# see if --path was passed and check if its a local or remote path
+# if not set then assume current directory for path
 if (args.path is not None):
-    if (os.path.isdir(args.path)):
+    # support http, https, and ftp
+    if (args.path.startswith('http://') or args.path.startswith('https://') or args.path.startswith('ftp://')):
+        
+        e_note("Fetching " + args.path)
+        
+        # get a uuid for this download
+        uuid = generateShortUUID()
+        
+        # set where to download this file to
+        destinationDir = TREDLY_PARTITIONS_MOUNT + '/' + partitionName + '/' + TREDLY_PTN_DATA_DIR_NAME + '/' + TREDLY_PTN_REMOTECONTAINERS_DIR_NAME + '/' + uuid
+        destinationFile = args.path.split('/')[-1]
+
+        # create a directory for the container
+        try:
+            os.makedirs(destinationDir + '/container')
+        except:
+            # we dont mind if it already exists
+            pass
+
+        # fetch the zip
+        try:
+            # Context so that we can turn on/off SSL verification
+            ctx = ssl.create_default_context()
+            # uncomment to ignore SSL certificate errors
+            #ctx.check_hostname = False
+            #ctx.verify_mode = ssl.CERT_NONE
+            
+            # download it
+            with urllib.request.urlopen(args.path, context=ctx) as u, open(destinationDir + '/' + destinationFile, 'wb') as f:
+                # write it to file
+                f.write(u.read())
+        except ssl.CertificateError:
+            e_error("An error occurred with the source's certificate - is it valid?")
+            exit(1)
+        except:
+            # catch 404 errors etc
+            e_error("An error occurred when downloading " + args.path)
+            exit(1)
+        
+        # extract the file
+        try:
+            with tarfile.open(destinationDir + '/' + destinationFile) as f:
+                # extract it
+                f.extractall(destinationDir + '/container')
+                
+                # now set the path to be where we extracted the file to and proceed with building
+                path = destinationDir + '/container'
+        except:
+            e_error("Failed to extract the file")
+            exit(1)
+
+    elif (os.path.isdir(args.path)):    # check local path
         path=args.path
     else:
         e_error("Directory " + args.path + " not found")
@@ -129,12 +193,6 @@ if (not builtins.tredlyCommonConfig.validate()):
 
 # action logic
 if (args.action == "create") and (args.subject == "container"): # create container
-    # check if target was received
-    if (args.target is not None):
-        partitionName=args.target
-    else:
-        # use current directory
-        partitionName="default"
     
     # create a container
     actionCreateContainer(args.containerName, partitionName, path, args.ip4_addr)

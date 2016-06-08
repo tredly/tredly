@@ -8,6 +8,7 @@ from objects.zfs.zfs import ZFSDataset
 import __main__
 import builtins
 import re
+from urllib.request import urlopen
 from subprocess import Popen, PIPE
 
 # copies files or folders from a given source to destination
