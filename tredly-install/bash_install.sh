@@ -574,7 +574,7 @@ else
         _thisRelease=$( sysctl -n kern.osrelease | cut -d '-' -f 1 -f 2 )
         
         # download manifest file to validate src.txz
-        fetch http://ftp.freebsd.org/pub/FreeBSD/releases/amd64/${_thisRelease}/MANIFEST -o /tmp
+        fetch https://download.freebsd.org/ftp/releases/amd64/${_thisRelease}/MANIFEST -o /tmp
         
         # if we have downlaoded src.txz for tredly then use that
         if [[ -f /tredly/downloads/${_thisRelease}/src.txz ]]; then
@@ -583,7 +583,7 @@ else
             cp /tredly/downloads/${_thisRelease}/src.txz /tmp
         else
             # otherwise download the src file
-            fetch http://ftp.freebsd.org/pub/FreeBSD/releases/amd64/${_thisRelease}/src.txz -o /tmp
+            fetch https://download.freebsd.org/ftp/releases/amd64/${_thisRelease}/src.txz -o /tmp
         fi
         
         # validate src.txz against MANIFEST
