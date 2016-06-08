@@ -83,6 +83,9 @@ argParser.add_argument('-v', '--version', action='store_true', help='Show versio
 # parse args
 args = argParser.parse_args()
 
+# get a tredlyhost object
+tredlyHost = TredlyHost()
+
 # enable debug mode if requested
 if (args.debug):
     DEBUG = True
@@ -96,8 +99,15 @@ partitionName="default"
 
 # check if a partition/target was specified
 if (args.target is not None):
-    # TODO: make sure this partition exists
     partitionName = args.target
+    
+    # make sure this partition exists
+    partitions = tredlyHost.getPartitionNames()
+    
+    # make sure it exists
+    if (partitionName not in partitions):
+        e_error('Partition "' + partitionName + '" does not exist.')
+        exit(1)
 
 # use current directory by default
 path=".";
@@ -205,12 +215,12 @@ elif (args.action == "replace") and (args.subject == "container"):  # replace co
     # replace the container
     actionReplaceContainer(args.containerName, args.identifier, args.target, path, args.ip4_addr)
     
-elif (args.action == "start") and (args.subject == "container"):  # replace container
-    # replace the container
+elif (args.action == "start") and (args.subject == "container"):  # start container
+    # start the container
     actionStartContainer(args.target, args.ip4_addr)
     
-elif (args.action == "stop") and (args.subject == "container"):  # replace container
-    # replace the container
+elif (args.action == "stop") and (args.subject == "container"):  # stop container
+    # stop the container
     actionStopContainer(args.target)
     
 elif (args.action == "version"):
