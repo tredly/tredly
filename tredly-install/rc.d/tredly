@@ -1,0 +1,72 @@
+#!/bin/sh
+
+# PROVIDE: tredly-api
+# BEFORE:  LOGIN FILESYSTEMS
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name="tredly"
+rcvar="tredly_enable"
+
+PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin:/root/bin"
+
+command="/usr/local/sbin/tredly"
+
+tredlyapi_directory="/usr/local/sbin/tredly-api"
+
+start_cmd="${name}_start"
+stop_cmd="${name}_stop"
+restart_cmd="${name}_restart"
+status_cmd="${name}_status"
+log_cmd="${name}_log"
+ssl_cmd="${name}_ssl"
+config_cmd="${name}_config"
+extra_commands="status log ssl config"
+
+load_rc_config $name
+: ${tredlyapi}_enable:=no}
+
+tredly_start()
+{
+${command} replace container --path=/tredly/ptn/default/data/tredly-ui --containerName=tredly-cc
+}
+
+tredly_stop()
+{
+    uuid=$( tredly list containers | grep -E 'tredly-cc' | awk '{ print 
+    cd ${tredlyapi_directory}
+    ${command} stop
+}
+
+tredly_restart()
+{
+    tredlyapi_stop
+    tredlyapi_start
+}
+
+tredly_status()
+{
+    cd ${tredlyapi_directory}
+    ${command} run list
+}
+tredly_log()
+{
+    cd ${tredlyapi_directory}
+    ${command} run logs
+}
+
+tredly_ssl()
+{
+    cd ${tredlyapi_directory}
+    ./ssl.sh
+}
+
+tredly_config()
+{
+    cd ${tredlyapi_directory}
+    ${command} run config
+}
+
+load_rc_config $name
+run_rc_command "$1"

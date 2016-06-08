@@ -466,6 +466,22 @@ else
 fi
 
 ##########
+
+# Install tredly-build
+e_note "Installing Tredly-Build"
+
+${_DIR}/../components/tredly-build/install.sh install clean
+if [[ $? -eq 0 ]]; then
+    e_success "Success"
+else
+    e_error "Failed"
+fi
+
+# initialise tredly
+tredly-host init
+
+##########
+
 # if the user wanted to install the api then go ahead
 if [[ $( str_to_lower "${_CONF_COMMON[enableAPI]}") == 'yes' ]]; then
     # set up tredly api
@@ -497,6 +513,8 @@ else
     e_note "Skipping Tredly-API Installation"
 fi
 
+##########
+
 # install command center if user requested it
 if [[ $( str_to_lower "${_CONF_COMMON[enableCommandCenter]}") == 'yes' ]]; then
     e_note "Configuring Tredly Command Center"
@@ -526,21 +544,6 @@ if [[ $( str_to_lower "${_CONF_COMMON[enableCommandCenter]}") == 'yes' ]]; then
 else
     e_note "Skipping Tredly Command Center Installation"
 fi
-
-##########
-
-# Install tredly-build
-e_note "Installing Tredly-Build"
-
-${_DIR}/../components/tredly-build/install.sh install clean
-if [[ $? -eq 0 ]]; then
-    e_success "Success"
-else
-    e_error "Failed"
-fi
-
-# initialise tredly
-tredly-host init
 
 ##########
 
@@ -690,7 +693,6 @@ if [[ -n "${_CONF_COMMON[apiWhitelist]}" ]]; then
     fi
 fi
 
-
 # echo out confirmation message to user
 e_header "Install Complete"
 echo -e "${_colourOrange}${_formatBold}"
@@ -700,11 +702,11 @@ echo -e "**************************************${_formatReset}"
 echo -e "${_colourMagenta}"
 echo "Please make note of this password so that you may access the API"
 echo ""
-#echo "To change this password, please run the command 'tredly-host config api password'"
-echo "To whitelist addresses to access the API, please run the command 'tredly-host config firewall addAPIwhitelist <ip address>'"
+echo "To change this password, please run the command 'tredly config api password'"
+echo "To whitelist addresses to access the API, please run the command 'tredly config api whitelist <ipaddr1>,<ipaddr2>'"
 echo ""
 echo -e "Please ${_formatBold}REBOOT${_formatReset}${_colourMagenta} your host for the new kernel and settings to take effect."
 echo ""
-echo "Please note that the SSH port has changed, use the following to connect to your host after reboot:"
+echo "Please note that the SSH port has changed. Please use the following command to connect to your host after reboot:"
 echo "ssh -p 65222 tredly@$( lcut "${_configOptions[2]}" "/" )"
 echo -e "${_formatReset}"
