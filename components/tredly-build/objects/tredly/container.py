@@ -1629,9 +1629,8 @@ class Container:
                 self.firewall.openPort("in", "tcp", containerInterface.name, "'table(3)'", str(containerIP4.ip), self.tcpInPorts)
                 self.firewall.openPort("in", "udp", containerInterface.name, "'table(3)'", str(containerIP4.ip), self.udpInPorts)
                 
-                
                 # Add some default rules for this interface if it isnt in a containergorup and doesnt have whitelist set
-                if (self.group is None) and (self.ipv4Whitelist is None):
+                if (self.group is None) and (len(self.ipv4Whitelist) == 0):
                     # open the IN ports from any
                     self.firewall.openPort("in", "tcp", containerInterface.name, "any", str(containerIP4.ip), self.tcpInPorts)
                     self.firewall.openPort("in", "udp", containerInterface.name, "any", str(containerIP4.ip), self.udpInPorts)
