@@ -37,7 +37,7 @@ def actionCreateContainer(containerName, partitionName, tredlyFilePath, ip4Addr 
     if (partitionName not in partitionNames):
         e_error('Partition "' + partitionName + '" does not exist.')
         exit(1)
-        
+    
     # make sure a default release is set in zfs
     zfsTredly = ZFSDataset(ZFS_TREDLY_DATASET)
     defaultRelease = zfsTredly.getProperty(ZFS_PROP_ROOT + ':default_release_name')
@@ -49,37 +49,6 @@ def actionCreateContainer(containerName, partitionName, tredlyFilePath, ip4Addr 
     if (ip4Addr is not None):
         # validate it
         if (not validateIp4Addr(ip4Addr)):
-            exit(1)
-
-    # set up a set of certs to copy so we can validate that they exist,a nd then copy them in
-    certsToCopy = set() # use a set for unique values
-    for url in builtins.tredlyFile.json['container']['proxy']['layer7Proxy']:
-        if (url['cert'] is not None):
-            # add to the list
-            certsToCopy.add(url['cert'])
-        
-        # add any redirect certs too
-        for redirect in url['redirects']:
-            if (redirect['cert'] is not None):
-                certsToCopy.add(redirect['cert'])
-    
-    # make sure they exist
-    for cert in certsToCopy:
-        if (cert.startswith("partition/")):
-            # set the path to the cert
-            certPath = TREDLY_PARTITIONS_MOUNT + "/" + partitionName + "/" + TREDLY_PTN_DATA_DIR_NAME + cert.lstrip('partition').rstrip('/')
-        elif (cert.startswith("/")):
-            certPath = tredlyFilePath + cert.rstrip('/')
-        else:
-            e_error("Invalid certificate definition " + cert)
-            exit(1)
-    
-        # check for server.crt and server.key
-        if (not os.path.isfile(certPath + '/server.crt')):
-            e_error("Missing server.crt in " + certPath + ' for cert ' + cert)
-            exit(1)
-        if (not os.path.isfile(certPath + '/server.key')):
-            e_error("Missing server.key in " + certPath + ' for cert ' + cert)
             exit(1)
 
     # make sure a container with this name on this partition doesnt already exist

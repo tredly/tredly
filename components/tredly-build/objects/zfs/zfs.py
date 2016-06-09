@@ -1,4 +1,7 @@
 # Purpose: Facilitates access to ZFS datasets and properties
+#
+# Note that this class makes use of "ZFS Arrays". These are a non standard way of storing array data within ZFS
+# and are implemented solely for Tredly
 
 from includes.output import *
 from subprocess import Popen, PIPE;
@@ -201,7 +204,14 @@ class ZFSDataset:
             # command failed
             return False
 
-    # unsets a specific property
+    # Action: unsets a ZFS property
+    #
+    # Pre: property may or may not exist
+    # Post: zfs property has been unset in ZFS
+    #
+    # Params: property - the property to unset
+    #
+    # Return: True if success False otherwise
     def unsetProperty(self, property):
         # remove the item
         cmd = ['zfs', 'inherit', '-r', property, self.dataset]
@@ -297,8 +307,26 @@ class ZFSDataset:
         
         return returnArray
     
-    # gets json data from zfs
-    # returns a list
+    # Action: turn object into json and append to ZFS array
+    #
+    # Pre: 
+    # Post: value has been turned into minified json and appended to array in ZFS
+    #
+    # Params: property - the property to append to
+    #         value - the object to turn into json and append
+    #
+    # Return: True if success False otherwise
+    def appendJsonArray(self, property, value):
+        return self.appendArray(property, json.dumps(value, separators=(',',':')))
+    
+    # Action: retrieves a JSON object from ZFS and returns as a list
+    #
+    # Pre: 
+    # Post: value has been turned into python objects and returned in a list
+    #
+    # Params: property - the property to search for
+    #
+    # Return: List
     def getJsonArray(self, property):
         array = self.getArray(property)
         
@@ -310,6 +338,14 @@ class ZFSDataset:
         
         return returnList
 
+    # Action: unsets a ZFS array
+    #
+    # Pre: property may or may not exist
+    # Post: zfs array has been removed from ZFS
+    #
+    # Params: property - the array to unset
+    #
+    # Return: True if success False otherwise
     def unsetArray(self, property):
         array = self.getArray(property)
         

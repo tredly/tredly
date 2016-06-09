@@ -8,6 +8,7 @@ from objects.zfs.zfs import ZFSDataset
 import __main__
 import builtins
 import re
+from urllib.request import urlopen
 from subprocess import Popen, PIPE
 
 # copies files or folders from a given source to destination
@@ -16,7 +17,7 @@ def copyFromContainerOrPartition(src, dest, partitionName):
     
     if (re.match('^partition/', src)):  # matches partition
         # create the path to the source file/directory
-        source = TREDLY_PARTITIONS_MOUNT + "/" + partitionName + "/" + TREDLY_PTN_DATA_DIR_NAME + "/" + src.lstrip('partition/').rstrip('/')
+        source = TREDLY_PARTITIONS_MOUNT + "/" + partitionName + "/" + TREDLY_PTN_DATA_DIR_NAME + "/" + src.split('/', 1)[-1].rstrip('/')
     if (re.match('^/', src)):           # matches container
         # create the path to the source file/directory
         source = builtins.tredlyFile.fileLocation + src.rstrip('/')
@@ -133,7 +134,10 @@ def unboundFormatFilename(filename):
     fileParts = filename.split('.')
     
     # create the filename
-    filename = fileParts[-3] + '_' + fileParts[-2] + '_' + fileParts[-1]
+    if (len(fileParts) >= 3):
+        filename = fileParts[-3] + '.' + fileParts[-2] + '.' + fileParts[-1]
+    elif(len(fileParts) == 2):
+        filename = fileParts[-2] + '.' + fileParts[-1]
     
     return filename
 

@@ -34,6 +34,8 @@ fi
 # load the config file
 _TREDLY_DIR_CONF="${_DIR}/conf"
 common_conf_parse "install"
+# ensure required fields are set
+common_conf_validate "enableSSHD,enableAPI,enableCommandCenter,tredlyApiGit,tredlyApiBranch,tredlyCCGit,tredlyCCBranch,downloadKernelSource"
 
 _configOptions[0]=''
 # check if some values are set, and if they arent then consult the host for the details
@@ -169,16 +171,33 @@ e_note "Installing Packages"
 _exitCode=0
 pkg install -y vim-lite | tee -a "${_LOGFILE}"
 _exitCode=$(( ${PIPESTATUS[0]} & $? ))
+if [[ ${_exitCode} -ne 0 ]]; then
+    exit_with_error "Failed to download vim-lite"
+fi
 pkg install -y rsync | tee -a "${_LOGFILE}"
 _exitCode=$(( ${PIPESTATUS[0]} & $? ))
+if [[ ${_exitCode} -ne 0 ]]; then
+    exit_with_error "Failed to download rsync"
+fi
 pkg install -y openntpd | tee -a "${_LOGFILE}"
 _exitCode=$(( ${PIPESTATUS[0]} & $? ))
+if [[ ${_exitCode} -ne 0 ]]; then
+    exit_with_error "Failed to download openntpd"
+fi
 pkg install -y git | tee -a "${_LOGFILE}"
-_exitCode=$(( ${PIPESTATUS[0]} & $? ))
-pkg install -y python35 | tee -a "${_LOGFILE}"
 _exitCode=$(( ${PIPESTATUS[0]} & $? ))
 if [[ ${_exitCode} -ne 0 ]]; then
     exit_with_error "Failed to download git"
+fi
+pkg install -y python35 | tee -a "${_LOGFILE}"
+_exitCode=$(( ${PIPESTATUS[0]} & $? ))
+if [[ ${_exitCode} -ne 0 ]]; then
+    exit_with_error "Failed to download python 3.5"
+fi
+pkg install -y py27-fail2ban | tee -a "${_LOGFILE}"
+_exitCode=$(( ${PIPESTATUS[0]} & $? ))
+if [[ ${_exitCode} -ne 0 ]]; then
+    exit_with_error "Failed to download fail2ban"
 fi
 pkg install -y nginx | tee -a "${_LOGFILE}"
 _exitCode=$(( ${PIPESTATUS[0]} & $? ))
@@ -190,6 +209,7 @@ _exitCode=$(( ${PIPESTATUS[0]} & $? ))
 if [[ ${_exitCode} -ne 0 ]]; then
     exit_with_error "Failed to download Unbound"
 fi
+
 if [[ ${_exitCode} -eq 0 ]]; then
     e_success "Success"
 else
@@ -198,24 +218,36 @@ fi
 
 ##########
 
-# Configure SSH
-_exitCode=0
-e_note "Configuring SSHD"
+# check if user wanted to enable SSHD or not
+if [[ $( str_to_lower "${_CONF_COMMON[enableSSHD]}") == 'yes' ]]; then
+    # Configure SSH
+    _exitCode=0
+    e_note "Configuring SSHD"
 
-if [[ -f "/etc/ssh/sshd_config" ]]; then
-    mv /etc/ssh/sshd_config /etc/ssh/sshd_config.old
-fi
-
-_exitCode=$(( ${_exitCode} & $? ))
-cp ${_DIR}/os/sshd_config /etc/ssh/sshd_config
-_exitCode=$(( ${_exitCode} & $? ))
-# change the networking data for ssh
-sed -i '' "s|ListenAddress .*|ListenAddress ${_configOptions[2]}|g" "/etc/ssh/sshd_config"
-_exitCode=$(( ${_exitCode} & $? ))
-if [[ ${_exitCode} -eq 0 ]]; then
-    e_success "Success"
+    # if the user has their own sshd config then preserve it
+    if [[ -f "/etc/ssh/sshd_config" ]]; then
+        mv /etc/ssh/sshd_config /etc/ssh/sshd_config.old
+        _exitCode=$(( ${_exitCode} & $? ))
+    fi
+    
+    cp ${_DIR}/os/sshd_config /etc/ssh/sshd_config
+    _exitCode=$(( ${_exitCode} & $? ))
+    
+    # change the networking data for ssh
+    sed -i '' "s|ListenAddress .*|ListenAddress ${_configOptions[2]}|g" "/etc/ssh/sshd_config"
+    _exitCode=$(( ${_exitCode} & $? ))
+    
+    # enable it in rc.conf
+    echo 'sshd_enable="YES"' >> /etc/rc.conf
+    _exitCode=$(( ${_exitCode} & $? ))
+    
+    if [[ ${_exitCode} -eq 0 ]]; then
+        e_success "Success"
+    else
+        e_error "Failed"
+    fi
 else
-    e_error "Failed"
+    e_note "Skipping configuration of SSHD"
 fi
 
 ##########
@@ -246,7 +278,20 @@ _exitCode=$(( ${_exitCode} & $? ))
 # Removed ipfw start for now due to its ability to disconnect a user from their host
 #service ipfw start
 #_exitCode=$(( ${_exitCode} & $? ))
-if [[ $_exitCode -eq 0 ]]; then
+if [[ ${_exitCode} -eq 0 ]]; then
+    e_success "Success"
+else
+    e_error "Failed"
+fi
+
+##########
+# Configure Fail2ban
+e_note "Configuring Fail2Ban"
+cp "${_DIR}/fail2ban/ssh-ipfw.conf" "/usr/local/etc/fail2ban/jail.d/ssh-ipfw.conf"
+_exitCode=$(( ${_exitCode} & $? ))
+cp "${_DIR}/fail2ban/action/ipfw-ssh.conf" "/usr/local/etc/fail2ban/action.d/ipfw-ssh.conf"
+_exitCode=$(( ${_exitCode} & $? ))
+if [[ ${_exitCode} -eq 0 ]]; then
     e_success "Success"
 else
     e_error "Failed"
@@ -422,9 +467,23 @@ fi
 
 ##########
 
-if [[ -z "${_CONF_COMMON[tredlyApiGit]}" ]]; then
-    e_note "Skipping Tredly-API"
+# Install tredly-build
+e_note "Installing Tredly-Build"
+
+${_DIR}/../components/tredly-build/install.sh install clean
+if [[ $? -eq 0 ]]; then
+    e_success "Success"
 else
+    e_error "Failed"
+fi
+
+# initialise tredly
+tredly-host init
+
+##########
+
+# if the user wanted to install the api then go ahead
+if [[ $( str_to_lower "${_CONF_COMMON[enableAPI]}") == 'yes' ]]; then
     # set up tredly api
     e_note "Configuring Tredly-API"
     _exitCode=1
@@ -450,22 +509,41 @@ else
     else
         e_error "Failed"
     fi
+else
+    e_note "Skipping Tredly-API Installation"
 fi
 
 ##########
 
-# Install tredly-build
-e_note "Installing Tredly-Build"
+# install command center if user requested it
+if [[ $( str_to_lower "${_CONF_COMMON[enableCommandCenter]}") == 'yes' ]]; then
+    e_note "Configuring Tredly Command Center"
+    _exitCode=1
+    cd /tmp
+    # if the directory for tredly-cc already exists, then delete it and start again
+    if [[ -d "/tmp/tredly-cc" ]]; then
+        echo "Cleaning previously downloaded Tredly Command Center"
+        rm -rf /tmp/tredly-cc
+    fi
 
-${_DIR}/../components/tredly-build/install.sh install clean
-if [[ $? -eq 0 ]]; then
-    e_success "Success"
+    while [[ ${_exitCode} -ne 0 ]]; do
+        git clone -b "${_CONF_COMMON[tredlyCCBranch]}" "${_CONF_COMMON[tredlyCCGit]}"
+        _exitCode=$?
+    done
+
+    cd /tmp/tredly-cc
+    
+    # install the Command Center
+    ./install.sh
+    
+    if [[ $? -eq 0 ]]; then
+        e_success "Success"
+    else
+        e_error "Failed"
+    fi
 else
-    e_error "Failed"
+    e_note "Skipping Tredly Command Center Installation"
 fi
-
-# initialise tredly
-tredly-host init
 
 ##########
 
@@ -496,7 +574,7 @@ else
         _thisRelease=$( sysctl -n kern.osrelease | cut -d '-' -f 1 -f 2 )
         
         # download manifest file to validate src.txz
-        fetch http://ftp.freebsd.org/pub/FreeBSD/releases/amd64/${_thisRelease}/MANIFEST -o /tmp
+        fetch https://download.freebsd.org/ftp/releases/amd64/${_thisRelease}/MANIFEST -o /tmp
         
         # if we have downlaoded src.txz for tredly then use that
         if [[ -f /tredly/downloads/${_thisRelease}/src.txz ]]; then
@@ -505,7 +583,7 @@ else
             cp /tredly/downloads/${_thisRelease}/src.txz /tmp
         else
             # otherwise download the src file
-            fetch http://ftp.freebsd.org/pub/FreeBSD/releases/amd64/${_thisRelease}/src.txz -o /tmp
+            fetch https://download.freebsd.org/ftp/releases/amd64/${_thisRelease}/src.txz -o /tmp
         fi
         
         # validate src.txz against MANIFEST
@@ -615,7 +693,6 @@ if [[ -n "${_CONF_COMMON[apiWhitelist]}" ]]; then
     fi
 fi
 
-
 # echo out confirmation message to user
 e_header "Install Complete"
 echo -e "${_colourOrange}${_formatBold}"
@@ -625,11 +702,11 @@ echo -e "**************************************${_formatReset}"
 echo -e "${_colourMagenta}"
 echo "Please make note of this password so that you may access the API"
 echo ""
-#echo "To change this password, please run the command 'tredly-host config api password'"
-echo "To whitelist addresses to access the API, please run the command 'tredly-host config firewall addAPIwhitelist <ip address>'"
+echo "To change this password, please run the command 'tredly config api password'"
+echo "To whitelist addresses to access the API, please run the command 'tredly config api whitelist <ipaddr1>,<ipaddr2>'"
 echo ""
 echo -e "Please ${_formatBold}REBOOT${_formatReset}${_colourMagenta} your host for the new kernel and settings to take effect."
 echo ""
-echo "Please note that the SSH port has changed, use the following to connect to your host after reboot:"
+echo "Please note that the SSH port has changed. Please use the following command to connect to your host after reboot:"
 echo "ssh -p 65222 tredly@$( lcut "${_configOptions[2]}" "/" )"
 echo -e "${_formatReset}"

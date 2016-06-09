@@ -16,6 +16,7 @@
 10 - Contains private container subnet
 11 - Contains private container interface
 20 - Contains all IP4 addresses whitelisted for Tredly-API Access
+50 - Fail2Ban blocked IP addresses
 
 ## Container Firewall
 

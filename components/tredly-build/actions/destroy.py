@@ -54,6 +54,9 @@ def actionDestroyContainer(uuid, partitionName = None):
     
     # make the container populate itself from zfs
     container.loadFromZFS(containerDataset)
+    # make sure the uuid is populated
+    if (container.uuid is None):
+        container.uuid = uuid
     
     zfsContainer = ZFSDataset(container.dataset, container.mountPoint)
     startDestructEpoch = int(time.time())
@@ -71,7 +74,7 @@ def actionDestroyContainer(uuid, partitionName = None):
     container.stop()
 
     # destroy the container
-    e_note("Destroying container " + container.name)
+    e_note("Destroying container " + str(container.name))
     if (container.destroy()):
         e_success("Success")
     else:
@@ -81,17 +84,19 @@ def actionDestroyContainer(uuid, partitionName = None):
     
     e_success("Destruction completed at " + time.strftime('%Y-%m-%d %H:%M:%S %z', time.localtime(endEpoch)))
     
-    uptimeEpoch = int(endEpoch) - int(container.buildEpoch)
+    # ensure we have a valid value before attempting math or display to user
+    if (container.buildEpoch is not None):
+        uptimeEpoch = int(endEpoch) - int(container.buildEpoch)
+        uptimeMins, uptimeSecs = divmod(uptimeEpoch, 60)
+        uptimeHours, uptimeMins = divmod(uptimeMins, 60)
+        uptimeDays, uptimeHours = divmod(uptimeHours, 24)
+        
+        e_success("Container uptime: " + str(uptimeDays) + " days " + str(uptimeHours) +" hours " + str(uptimeMins) + " minutes " + str(uptimeSecs) + " seconds")
+    
     destructTime = int(endEpoch) - int(startDestructEpoch)
     
     # 0 seconds doesnt sound right
     if (destructTime == 0):
         destructTime = 1
         
-    uptimeMins, uptimeSecs = divmod(uptimeEpoch, 60)
-    uptimeHours, uptimeMins = divmod(uptimeMins, 60)
-    uptimeDays, uptimeHours = divmod(uptimeHours, 24)
-    
-    e_success("Container uptime: " + str(uptimeDays) + " days " + str(uptimeHours) +" hours " + str(uptimeMins) + " minutes " + str(uptimeSecs) + " seconds")
-    
     e_success("Total time taken: " + str(destructTime) + " seconds")

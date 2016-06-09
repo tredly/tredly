@@ -7,10 +7,8 @@ import json
 import builtins
 from includes.output import *
 
-
 # A class to handle the loading of Tredlyfiles. This class has been designed in such a way that all data is parsed to JSON.
 # This allows us to load any type of file we wish without having to change the internals of Tredly
-
 class TredlyFile:
 
     # constructor

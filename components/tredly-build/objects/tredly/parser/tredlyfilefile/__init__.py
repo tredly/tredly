@@ -24,7 +24,6 @@ class TredlyfileParser(TredlyParser):
                 value = groups.group(2)
                 lines.append([command, value])
 
-
         with open(os.path.join(os.path.dirname(__file__), "jsonMap.json")) as mapFile:
             _map = json.load(mapFile)
 
@@ -54,6 +53,7 @@ class TredlyfileParser(TredlyParser):
             },
             'operations':{
                 'onCreate': [],
+                'onStart': [],
                 'onStop': []
             },
             'technicalOptions':{}
@@ -91,6 +91,7 @@ class TredlyfileParser(TredlyParser):
 
             return add
 
+        # add a key to the base directory
         def appendKey(key):
             keys = key.split(".");
             obj = container
@@ -113,6 +114,7 @@ class TredlyfileParser(TredlyParser):
             # set up redirects
             if index not in urls:
                 urls[index] = {
+                    'cert': None,
                     'redirects': {}
                 }
 
@@ -125,7 +127,10 @@ class TredlyfileParser(TredlyParser):
 
                 # create a dict if it doesnt already exist
                 if (redirectIndex not in urls[index]['redirects']):
-                    urls[index]['redirects'][redirectIndex] = {}
+                    urls[index]['redirects'][redirectIndex] = {
+                        "url": None,
+                        "cert": None
+                    }
 
                 urls[index]['redirects'][redirectIndex][redirectProp] = val
 
@@ -140,7 +145,8 @@ class TredlyfileParser(TredlyParser):
                         _prop = "enableWebsocket"
                     else: return
                 urls[index][_prop] = val
-        
+
+        # add technicaloptions
         def technicalOptions(value):
             with open(os.path.join(os.path.dirname(__file__), "technicalOptionsMap.json")) as techOptsMap:
                 _map = json.load(techOptsMap)
@@ -171,7 +177,7 @@ class TredlyfileParser(TredlyParser):
             'maxCpu': addKey('resourceLimits', 'maxCpu'),
             'maxHdd': resourceLimits('maxHdd'),
             'maxRam': resourceLimits('maxRam'),
-            
+
             'layer4Proxy': layer4Proxy,
 
             'onStart': operations('onCreate','exec'),
@@ -211,6 +217,7 @@ class TredlyfileParser(TredlyParser):
             elif key in _map:
                 container[_map[key]] = val
             elif isUrl:
+                # add the url linked key/value
                 addUrl(isUrl.group(1),isUrl.group(2),key)
             # Copy directly
             else:

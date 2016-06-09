@@ -23,11 +23,10 @@ class TredlyParser:
         with open(os.path.abspath(os.path.join(os.path.dirname( __file__ ), builtins.tredlyJsonDirectory + '/tredlyfile.schema.json'))) as jsonSchema:
             schema = json.load(jsonSchema)
 
-            DefaultValidatingDraft4Validator = extend_with_default(Draft4Validator)
-            DefaultValidatingDraft4Validator(schema).validate(self.json)
-        
+            defaultValidatingDraft4Validator = extend_with_default(Draft4Validator)
+            defaultValidatingDraft4Validator(schema).validate(self.json)
 
-
+# use the json schema to populate defaults
 def extend_with_default(validator_class):
     validate_properties = validator_class.VALIDATORS["properties"]
 
