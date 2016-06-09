@@ -5,6 +5,21 @@
 # Contains reusable functions for container management
 #
 
+# runs a given command within the given container
+function container_run_cmd() {
+    local _uuid="${1}"
+    local _command="${2}"
+    
+    # make sure the uuid exists
+    if ! container_exists "${_uuid}"; then
+        exit_with_error "No container with uuid ${_uuid} found"
+    fi
+    # run the command
+    jexec trd-${_uuid} sh -c "${_command}"
+    
+    return $?
+}
+
 # Grants console access to a container
 function container_console() {
     local _input="${1}"
@@ -251,10 +266,9 @@ function container_exists() {
     # get a list of partitions
     local _partitions=$( get_partition_names )
     IFS=$'\n'
-    local _partition
-    for _partition in ${_partitions}; do
+    local _partitionName
+    for _partitionName in ${_partitions}; do
         local _output=$( zfs_get_property "${ZFS_TREDLY_PARTITIONS_DATASET}/${_partitionName}/${TREDLY_CONTAINER_DIR_NAME}/${_uuid}" "${ZFS_PROP_ROOT}:host_hostuuid" )
-
         # check the output
         if [[ -n ${_output} ]]; then
             return ${E_SUCCESS}

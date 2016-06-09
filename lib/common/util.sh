@@ -61,11 +61,12 @@ function cmn_assert_running_as_root {
 ##     bool
 function is_int() {
     local re='^[0-9]+$'
+
     if ! [[ "${1}" =~ ${re} ]] ; then
-        return $E_ERROR
+        return ${E_ERROR}
     fi
 
-    return $E_SUCCESS
+    return ${E_SUCCESS}
 }
 
 function is_float() {

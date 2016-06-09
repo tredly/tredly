@@ -290,16 +290,17 @@ function extractFromIP4Addr() {
     local _toExtract="${2}"
     # split it
     [[ ${_ip4_addr} =~ ^([^|]+)\|(.+)/(.+)$ ]]
-
+    local -a re
+    re=("${BASH_REMATCH[@]}")
     case "${_toExtract}" in
         interface)
-            echo "${BASH_REMATCH[1]}"
+            echo "${re[1]}"
             ;;
         cidr|netmask)
-            echo "${BASH_REMATCH[3]}"
+            echo "${re[3]}"
             ;;
         *)  # aka ip4
-            echo "${BASH_REMATCH[2]}"
+            echo "${re[2]}"
             ;;
     esac
     return $E_SUCCESS
@@ -311,7 +312,7 @@ function is_valid_ip4() {
     local _ip4=$( lcut "${1}" '/' )
 
     # make sure the string contains 3 dots
-    local numDots=$(grep -o -F '.' <<< "${_ip4}" | wc -l)
+    local numDots=$( grep -o -F '.' <<< "${_ip4}" | wc -l)
     if [[ ${numDots} -ne 3 ]]; then
         return $E_ERROR
     fi
@@ -321,7 +322,7 @@ function is_valid_ip4() {
     for value in ${_ip4}
     do
         # if this value is < 0 or > 255 then its bogus
-        if [[ "$value" -lt "0" || "$value" -gt "255" || ! "$value" =~ ^[0-9]{1,3}$ ]]; then
+        if [[ "${value}" -lt "0" || "${value}" -gt "255" || ! "${value}" =~ ^[0-9]{1,3}$ ]]; then
             return ${E_ERROR}
         fi
     done
@@ -332,14 +333,14 @@ function is_valid_ip4() {
 # takes an ip address, and checks if it is valid or not
 function is_valid_cidr() {
     if ! is_int "${1}"; then
-        return $E_ERROR
+        return ${E_ERROR}
     fi
-
+    
     if [[ "${1}" -lt "0" ]] || [[ "${1}" -gt "32" ]]; then
-        return $E_ERROR
+        return ${E_ERROR}
     fi
 
-    return $E_SUCCESS
+    return ${E_SUCCESS}
 }
 
 # Given an ip address and netmask, calculate the network address
@@ -743,6 +744,22 @@ function ip4_set_container_subnet() {
         fi
     fi
     
+    e_note "Setting static IPs"
+    local _layer7ProxyContainerIP=$( subtractFromBroadcast "${_ip4}/${_cidr}" "2" )
+    local _tredlyCommandCenterContainerIP=$( subtractFromBroadcast "${_ip4}/${_cidr}" "3" )
+    local _dnsContainer=$( subtractFromBroadcast "${_ip4}/${_cidr}" "4" )
+    {
+        echo "tredlyLayer7Proxy=${_layer7ProxyContainerIP}/${_cidr}"
+        echo "tredlyDNS=${_tredlyCommandCenterContainerIP}/${_cidr}"
+        echo "tredlyCC=${_dnsContainer}/${_cidr}"
+    } > /usr/local/etc/tredly/static-ips.conf
+    
+    if [[ $? -eq 0 ]]; then
+        e_success "Success"
+    else
+        e_error "Failed"
+    fi
+
     e_note "Updating rc.conf"
     if replace_line_in_file "^ifconfig_${_interface}=\".*\"$" "ifconfig_${_interface}=\"inet ${_newJIP} netmask ${_netMask}\"" "/etc/rc.conf"; then
         e_success "Success"
@@ -761,6 +778,9 @@ function ip4_set_container_subnet() {
     _exitCode=$(( _exitCode & $? ))
     
     ipfw_add_persistent_table_member "" 11 "${_interface}"
+    _exitCode=$(( _exitCode & $? ))
+    
+    ipfw_add_persistent_table_member "" 20 "${_tredlyCommandCenterContainerIP}"
     _exitCode=$(( _exitCode & $? ))
     
     replace_line_in_file "^p7ip=\".*\"" "p7ip=\"${_newJIP}\"" "/usr/local/etc/ipfw.vars"
@@ -897,3 +917,40 @@ function getDefaultGateway() {
     netstat -r4n | grep '^default' | awk '{ print $2 }'
 }
 
+# gets a list of interfaces which could possibly be external interfaces
+function getExternalInterfaces() {
+    ifconfig | grep "^[a-zA-Z].*[0-9].*:" | grep -v "^lo0:" | grep -v "^bridge[0-9].*:" | awk '{ print $1 }' | tr -d :
+}
+
+
+function is_valid_hostname() {
+    local _hostname="${1}"
+    # make sure length isnt > 255 chars
+    if [[ ${#_hostname} -gt 255 ]]; then
+        return ${E_ERROR}
+    # match a valid hostname
+    elif [[ "${_hostname}" =~ ^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])(\.([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9]))*$ ]]; then
+        return ${E_SUCCESS}
+    fi
+    
+    return ${E_ERROR}
+}
+
+# use python to do IP address math
+function subtractFromBroadcast() {
+    local _subnet="${1}"
+    local _numToSubtract="${2}"
+
+    # use python to subtract from the subnet
+    python3.5 - <<END
+import ipaddress
+# create an interface object
+interface = ipaddress.IPv4Interface('${_subnet}')
+# get a network object
+network = interface.network
+# get its broadcast
+broadcast = network.broadcast_address
+    
+print(broadcast - ${_numToSubtract})
+END
+}

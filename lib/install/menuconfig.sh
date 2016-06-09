@@ -23,6 +23,7 @@ function tredlyHostMenuConfig() {
             echo -e "4.^Hostname^${_configOptions[4]}"
             echo -e "5.^Container Subnet^${_configOptions[5]}"
             echo -e "6.^API Whitelist^${_configOptions[6]}"
+            echo -e "7.^Tredly Command Center URL^${_configOptions[7]}"
             
         } | column -ts ^
         echo -en "${_colourDefault}"
@@ -58,6 +59,10 @@ function tredlyHostMenuConfig() {
                     # api whitelist
                     tredlySelectApiWhitelist
                 ;;
+                7)
+                    # tredly command center
+                    tredlySelectCommandCenterURL
+                ;;
                 *)
                     echo "Invalid input \"${_userSelection}\""
                 ;;
@@ -68,8 +73,8 @@ function tredlyHostMenuConfig() {
 
 # allows user to select their external iface
 function tredlySelectExternalInterface() {
-    local _externalInterface
-    local _userSelectInterface
+    local _externalInterface=''
+    local _userSelectInterface=''
     
     # get a list of interfaces
     IFS=$'\n' _interfaces=($( getExternalInterfaces ))
@@ -112,15 +117,18 @@ function tredlySelectExternalIP() {
         read -p "External IP Address: " _userInput
     
         # now validate it
-        [[ ${_userInput} =~ ^(.*)\/([[:digit:]]+)$ ]]
-        
-        # validate the values
-        if is_valid_ip4 "${BASH_REMATCH[1]}" && is_valid_cidr "${BASH_REMATCH[2]}"; then
-            _valid="true"
-            # set it in the global
-            _configOptions[2]="${_userInput}"
-        else
-            echo "Please enter in the format ip/cidr. Eg. 10.99.0.0/16"
+        if [[ ${_userInput} =~ ^(.*)/([[:digit:]]+)$ ]]; then
+            local -a re
+            re=("${BASH_REMATCH[@]}")
+            
+            # validate the values
+            if is_valid_ip4 "${re[1]}" && is_valid_cidr "${re[2]}"; then
+                _valid="true"
+                # set it in the global
+                _configOptions[2]="${_userInput}"
+            else
+                echo "Please enter in the format ip/cidr. Eg. 10.99.0.0/16"
+            fi
         fi
     done
 }
@@ -179,16 +187,16 @@ function tredlySelectContainerSubnet() {
         # now validate it
         regex="^(.*)\/([[:digit:]]+)$"
         [[ ${_userInput} =~ ${regex} ]]
-        
+        local -a re
+        re=("${BASH_REMATCH[@]}")
         # validate the values
-        if is_valid_ip4 "${BASH_REMATCH[1]}" && is_valid_cidr "${BASH_REMATCH[2]}"; then
+        if is_valid_ip4 "${re[1]}" && is_valid_cidr "${re[2]}"; then
             _valid="true"
             # set it in the global
             _configOptions[5]="${_userInput}"
         else
             echo "Please enter in the format ip/cidr. Eg. 10.99.0.0/16"
         fi
-
     done
 }
 
@@ -327,6 +335,26 @@ function tredlySelectApiWhitelist() {
         if [[ "${_valid}" == "true" ]]; then
             # set the global
             _configOptions[6]="${_userInput}"
+        fi
+    done
+}
+
+function tredlySelectCommandCenterURL() {
+    local _userInput
+    
+    # var for loop
+    local _valid="false"
+    
+    while [[ "${_valid}" == "false" ]]; do
+        echo "Please enter the URL on which Command Center will respond to:"
+        read -p "Command Center URL: " _userInput
+
+        if ! is_valid_hostname "${_userInput}"; then
+            e_error "${_userInput} is not a valid hostname"
+            _valid="false"
+        else
+            _valid="true"
+            _configOptions[7]="${_userInput}"
         fi
     done
 }

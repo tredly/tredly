@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+# commands require running as root
+cmn_assert_running_as_root
+
+show_help "Available Commands:
+    container
+    ---------
+    Description:
+        Runs a command on a container
+
+    Examples:
+        $(basename "$0") command container xYH2KnI8 ls -l /etc
+"
+
+case "${_SUBCOMMANDS[0]}" in
+    container)
+        command=''
+        i=0
+        # only print out the parts after the 2nd element
+        for cmdPart in ${_SUBCOMMANDS[@]}; do
+            if [[ ${i} -gt 1 ]]; then
+                command="${command} ${cmdPart}"
+            fi
+            i=$(( i + 1 ))
+        done
+        container_run_cmd "${_SUBCOMMANDS[1]}" "${command}"
+    ;;
+    *)
+        exit_with_error "Unknown create start \"${_SUBCOMMANDS[0]}\""
+    ;;
+esac

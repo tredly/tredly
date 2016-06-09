@@ -1271,8 +1271,9 @@ class Container:
             else:
                 e_error("Failed")
                 
-        # Register the URLs
-        self.registerLayer7URLs()
+        # Register any URLs
+        if (len(self.urls) > 0):
+            self.registerLayer7URLs()
 
         # reload unbound
         e_note("Reloading DNS server")

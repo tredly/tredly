@@ -9,13 +9,13 @@ import signal
 import urllib.request
 import tarfile
 import ssl
-
+import importlib
 
 # capture the sigint handler
 def sigintHandler(signal, frame):
     print('')
     print('SIGINT caught. Exiting...')
-    exit(0)
+    exit(2)
 
 # catch sigint
 signal.signal(signal.SIGINT, sigintHandler)
@@ -45,12 +45,7 @@ else:
 from config.configfile import ConfigFile
 from zfs.zfs import ZFSDataset
 
-# import actions
-from actions.create import *
-from actions.destroy import *
-from actions.replace import *
-from actions.start import *
-from actions.stop import *
+from objects.tredly.tredlyhost import *
 
 # include global modules
 from includes.defines import *
@@ -83,6 +78,12 @@ argParser.add_argument('-v', '--version', action='store_true', help='Show versio
 # parse args
 args = argParser.parse_args()
 
+# If version requested then display and exit
+if (args.action == "version"):
+    # print the version
+    print(SCRIPTNAME + ": version " + VERSION_NUMBER + " (built " + VERSION_DATE + ")")
+    exit(0)
+
 # get a tredlyhost object
 tredlyHost = TredlyHost()
 
@@ -94,23 +95,16 @@ if (args.debug):
 if (args.verbose):
     VERBOSE = True
 
-# default partiton name is "default"
-partitionName="default"
+# set up a dict to pass to actions
+actionArgs = {}
+actionArgs['containerName'] = args.containerName
+actionArgs['ip4Addr'] = args.ip4_addr
 
-# check if a partition/target was specified
-if (args.target is not None):
-    partitionName = args.target
-    
-    # make sure this partition exists
-    partitions = tredlyHost.getPartitionNames()
-    
-    # make sure it exists
-    if (partitionName not in partitions):
-        e_error('Partition "' + partitionName + '" does not exist.')
-        exit(1)
+# default partiton name is "default"
+actionArgs['partitionName'] = "default"
 
 # use current directory by default
-path=".";
+actionArgs['path'] = ".";
 # see if --path was passed and check if its a local or remote path
 # if not set then assume current directory for path
 if (args.path is not None):
@@ -160,13 +154,13 @@ if (args.path is not None):
                 f.extractall(destinationDir + '/container')
                 
                 # now set the path to be where we extracted the file to and proceed with building
-                path = destinationDir + '/container'
+                actionArgs['path'] = destinationDir + '/container'
         except:
             e_error("Failed to extract the file")
             exit(1)
 
     elif (os.path.isdir(args.path)):    # check local path
-        path=args.path
+        actionArgs['path'] = args.path
     else:
         e_error("Directory " + args.path + " not found")
         exit(1)
@@ -201,31 +195,19 @@ builtins.tredlyCommonConfig.process()
 if (not builtins.tredlyCommonConfig.validate()):
     exit_with_error("Failed to validate tredly-host.conf")
 
-# action logic
-if (args.action == "create") and (args.subject == "container"): # create container
-    
-    # create a container
-    actionCreateContainer(args.containerName, partitionName, path, args.ip4_addr)
-    
-elif (args.action == "destroy") and (args.subject == "container"):  # destroy container
-    # destroy the container
-    actionDestroyContainer(args.target)
-
-elif (args.action == "replace") and (args.subject == "container"):  # replace container
-    # replace the container
-    actionReplaceContainer(args.containerName, args.identifier, args.target, path, args.ip4_addr)
-    
-elif (args.action == "start") and (args.subject == "container"):  # start container
-    # start the container
-    actionStartContainer(args.target, args.ip4_addr)
-    
-elif (args.action == "stop") and (args.subject == "container"):  # stop container
-    # stop the container
-    actionStopContainer(args.target)
-    
-elif (args.action == "version"):
-    # print the version
-    print(SCRIPTNAME + ": version " + VERSION_NUMBER + " (built " + VERSION_DATE + ")")
-else:
-    e_error("Command " + args.action + " not found")
+# try loading the action module
+try:
+    # dynamically load the module
+    mod = importlib.import_module("actions." + args.action.lower())
+except ImportError as e:
+    e_error('No action "' + args.action.lower() + '" found.')
     exit(1)
+
+# get a handle to the module
+actionMod = getattr(mod, "Action" + args.action[0].upper() + args.action[1:].lower())
+
+# initialise the object and run the command
+actionObj = actionMod(args.subject, args.target, args.identifier, actionArgs)
+
+# exit with code 0 if we reached this point
+exit(0)

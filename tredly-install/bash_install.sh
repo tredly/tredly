@@ -1,7 +1,7 @@
 #!/usr/local/bin/bash
 
 # set some bash error handlers
-set -u              # exit when attempting to use an undeclared variable
+#set -u              # exit when attempting to use an undeclared variable
 set -o pipefail     # exit when piped commands fail
 
 # load some bash libraries
@@ -35,7 +35,7 @@ fi
 _TREDLY_DIR_CONF="${_DIR}/conf"
 common_conf_parse "install"
 # ensure required fields are set
-common_conf_validate "enableSSHD,enableAPI,enableCommandCenter,tredlyApiGit,tredlyApiBranch,tredlyCCGit,tredlyCCBranch,downloadKernelSource"
+common_conf_validate "enableSSHD,enableAPI,enableCommandCenter,commandCenterURL,tredlyApiGit,tredlyApiBranch,tredlyCCGit,tredlyCCBranch,downloadKernelSource"
 
 _configOptions[0]=''
 # check if some values are set, and if they arent then consult the host for the details
@@ -74,7 +74,11 @@ if [[ -z "${_CONF_COMMON[apiWhitelist]}" ]]; then
 else
     _configOptions[6]="${_CONF_COMMON[apiWhitelist]}"
 fi
-
+if [[ -z "${_CONF_COMMON[commandCenterURL]}" ]]; then
+    _configOptions[7]=""
+else
+    _configOptions[7]="${_CONF_COMMON[commandCenterURL]}"
+fi
 
 # check for a dhcp leases file for this interface
 #if [[ -f "/var/db/dhclient.leases.${_configOptions[1]}" ]]; then
@@ -533,8 +537,8 @@ if [[ $( str_to_lower "${_CONF_COMMON[enableCommandCenter]}") == 'yes' ]]; then
 
     cd /tmp/tredly-cc
     
-    # install the Command Center
-    ./install.sh
+    # install the Command Center using the url we were given
+    ./install.sh "${_configOptions[7]}"
     
     if [[ $? -eq 0 ]]; then
         e_success "Success"
