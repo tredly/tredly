@@ -2,7 +2,23 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## v1.0.0-beta - 2016-06-09
+## [1.0.0-beta - 2016-06-10]
+#### Added
+- Now importing actions as modules. Allows for "drop in" commands in the same style as the bash tredly-build code
+- Added "tredly command container" wrapper for jexec
+- Added static ip network setup
+
+#### Changed
+- Major structural change to files and libraries
+- Change exit code for sigint
+
+#### Fixed
+- Don't register URLs if there were no URLs
+- Bug fix for bash container_exists
+- Fix bugs with config menu on installer
+- Fix missing Tredly-cc URL config menu option
+
+## [1.0.0-beta - 2016-06-09]
 ### HOST
 #### Added
 - `fail2ban` implemented on host port 65222 tcp (SSH)
@@ -34,7 +50,6 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Fixed issue with "any" rules not being applied on containers with no `ip4Whitelist` and no `containerGroup`
 - Fixed bug in `fileFolderMapping` where part of the path would be truncated when copying data from partition
 
-
 ### CORE
 #### Added
 - Added command `tredly api password` to set api password
@@ -43,7 +58,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 #### Changed
 - Updated `tredly init` to fetch sources from HTTPS instead of HTTP
 
-## v1.0.0-beta - 2016-06-06
+## [1.0.0-beta - 2016-06-06]
 #### Added
 - Start & stop for containers, a lot of code has been refactored to facilitate this
 
@@ -55,8 +70,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Bugfixes for ipfw in container
 - Bugfix for reloading DNS on create
 
-## v1.0.0-beta - 2016-06-02
+## 1.0.0-beta - 2016-06-02
 #### Added
 - Initial release of Tredly rewrite
 - Single codebase (i.e. removal of seperate tredly-host and tredly-build repositories)
 - Framework now written in Python 3 (many supporting libraries are still in written in BASH)
+
+[1.0.0-beta - 2016-06-10]: https://github.com/tredly/tredly/compare/v1.0.0-beta-160609...v1.0.0-beta-160610
+[1.0.0-beta - 2016-06-09]: https://github.com/tredly/tredly/compare/v1.0.0-beta-160606...v1.0.0-beta-160609
+[1.0.0-beta - 2016-06-06]: https://github.com/tredly/tredly/compare/v1.0.0-beta...v1.0.0-beta-160606
