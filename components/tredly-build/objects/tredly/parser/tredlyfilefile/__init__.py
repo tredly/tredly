@@ -126,7 +126,10 @@ class TredlyfileParser(TredlyParser):
 
                 # create a dict if it doesnt already exist
                 if (redirectIndex not in urls[index]['redirects']):
-                    urls[index]['redirects'][redirectIndex] = {}
+                    urls[index]['redirects'][redirectIndex] = {
+                        "url": None,
+                        "cert": None
+                    }
 
                 urls[index]['redirects'][redirectIndex][redirectProp] = val
 
@@ -141,7 +144,7 @@ class TredlyfileParser(TredlyParser):
                         _prop = "enableWebsocket"
                     else: return
                 urls[index][_prop] = val
-        
+
         # add technicaloptions
         def technicalOptions(value):
             with open(os.path.join(os.path.dirname(__file__), "technicalOptionsMap.json")) as techOptsMap:
@@ -173,7 +176,7 @@ class TredlyfileParser(TredlyParser):
             'maxCpu': addKey('resourceLimits', 'maxCpu'),
             'maxHdd': resourceLimits('maxHdd'),
             'maxRam': resourceLimits('maxRam'),
-            
+
             'layer4Proxy': layer4Proxy,
 
             'onStart': operations('onCreate','exec'),

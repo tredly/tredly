@@ -389,11 +389,13 @@
                         },
                         "cert": {
                           "description": "SSL certificate to apply to a http redirect 'from' URL.",
-                          "type": [ "string", "null" ]
+                          "type": [ "string", "null" ],
+                          "default": "null"
                         }
                       },
                       "required": [
-                        "url"
+                        "url",
+                        "cert"
                       ]
                     }
                   }
