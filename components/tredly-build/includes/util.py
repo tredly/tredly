@@ -134,7 +134,10 @@ def unboundFormatFilename(filename):
     fileParts = filename.split('.')
     
     # create the filename
-    filename = fileParts[-3] + '_' + fileParts[-2] + '_' + fileParts[-1]
+    if (len(fileParts) >= 3):
+        filename = fileParts[-3] + '.' + fileParts[-2] + '.' + fileParts[-1]
+    elif(len(fileParts) == 2):
+        filename = fileParts[-2] + '.' + fileParts[-1]
     
     return filename
 

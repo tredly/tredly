@@ -2047,8 +2047,10 @@ class Container:
                 e_note("Registering " + redirectFromDomain + " in DNS")
                 # base DNS filename off last 3 (sub)domains
                 fileParts = redirectFromDomain.split('.')
+                
                 # create the filename
-                filename = fileParts[-3] + '.' + fileParts[-2] + '.' + fileParts[-1]
+                filename = unboundFormatFilename(redirectFromDomain)
+                
                 # and the object
                 unboundFile = UnboundFile(UNBOUND_CONFIG_DIR + "/" + unboundFormatFilename(filename))
                 # read contents
