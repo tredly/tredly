@@ -359,8 +359,7 @@
                     "type": "string"
                   },
                   "cert": {
-                    "type": [ "string", "null" ],
-                    "default": "null"
+                    "type": [ "string", "null" ]
                   },
                   "enableWebsocket": {
                     "optional": true,
@@ -389,8 +388,7 @@
                         },
                         "cert": {
                           "description": "SSL certificate to apply to a http redirect 'from' URL.",
-                          "type": [ "string", "null" ],
-                          "default": "null"
+                          "type": [ "string", "null" ]
                         }
                       },
                       "required": [
