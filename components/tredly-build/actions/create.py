@@ -37,7 +37,7 @@ def actionCreateContainer(containerName, partitionName, tredlyFilePath, ip4Addr 
     if (partitionName not in partitionNames):
         e_error('Partition "' + partitionName + '" does not exist.')
         exit(1)
-        
+    
     # make sure a default release is set in zfs
     zfsTredly = ZFSDataset(ZFS_TREDLY_DATASET)
     defaultRelease = zfsTredly.getProperty(ZFS_PROP_ROOT + ':default_release_name')
