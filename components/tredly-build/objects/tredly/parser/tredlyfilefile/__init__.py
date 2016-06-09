@@ -114,6 +114,7 @@ class TredlyfileParser(TredlyParser):
             # set up redirects
             if index not in urls:
                 urls[index] = {
+                    'cert': None,
                     'redirects': {}
                 }
 

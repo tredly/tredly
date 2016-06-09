@@ -359,8 +359,8 @@
                     "type": "string"
                   },
                   "cert": {
-                    "type": "string",
-                    "optional": true
+                    "type": [ "string", "null" ],
+                    "default": "null"
                   },
                   "enableWebsocket": {
                     "optional": true,
@@ -401,7 +401,8 @@
                   }
                 },
                 "required": [
-                  "url"
+                  "url",
+                  "cert"
                 ]
               }
             }
