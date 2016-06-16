@@ -66,3 +66,4 @@ components/tredly-build/tests/generated
 
 # Custom stuff
 .DS_Store
+python3.5.core

@@ -1,0 +1,121 @@
+{
+    "container": {
+        "persistentStorage": {
+            "identifier": "test",
+            "mountPoint": "/test"
+        },
+        "firewall": {
+            "allowPorts": {
+                "tcp": {
+                    "out": [
+                        80,
+                        443
+                    ],
+                    "in": [
+                        80,
+                        443
+                    ]
+                },
+                "udp": {
+                    "out": [
+                        53
+                    ],
+                    "in": []
+                }
+            },
+            "ipv4Whitelist": []
+        },
+        "startOrder": 1,
+        "compatibleWith": "1.0.0",
+        "technicalOptions": {
+            "mount.fdescfs": "0",
+            "devfs_ruleset": 1,
+            "allow.mount": "1",
+            "allow.mount.procfs": "1",
+            "allow.mount.devfs": "1",
+            "allow.chflags": "1",
+            "exec.timeout": "1",
+            "exec.fib": "0",
+            "allow.socket_af": "1",
+            "allow.raw_sockets": "1",
+            "exec.prestart": "/usr/bin/true",
+            "allow.quotas": "1",
+            "allow.sysvipc": "1",
+            "enforce_statfs": "1",
+            "allow.mount.nullfs": "1",
+            "mount.devfs": "1",
+            "children.max": 10,
+            "exec.stop": "/usr/bin/true",
+            "securelevel": 0,
+            "stop.timeout": "1",
+            "allow.set_hostname": "1",
+            "allow.mount.zfs": "1",
+            "exec.prestop": "/usr/bin/true",
+            "exec.poststart": "/usr/bin/true",
+            "exec.clean": "1",
+            "allow.mount.tmpfs": "1"
+        },
+        "customDNS": [
+            "8.8.8.8",
+            "8.8.4.4"
+        ],
+        "buildOptions": {
+            "publish": false
+        },
+        "resourceLimits": {
+            "maxCpu": "10%",
+            "maxRam": "1024M",
+            "maxHdd": "1024M"
+        },
+        "proxy": {
+            "layer7Proxy": [
+                {
+                    "enableWebsocket": false,
+                    "redirects": [],
+                    "cert": "partition/sslCerts/selfsigned",
+                    "url": "https://www.tredly-test.com",
+                    "maxFileSize": "10m"
+                }
+            ],
+            "layer4Proxy": false
+        },
+        "replicate": false,
+        "operations": {
+            "onStop": [],
+            "onCreate": [
+                {
+                    "value": "nginx",
+                    "type": "installPackage"
+                },
+                {
+                    "source": "partition/sslCerts/selfsigned",
+                    "type": "fileFolderMapping",
+                    "target": "/usr/local/etc/nginx/ssl"
+                },
+                {
+                    "source": "/data",
+                    "type": "fileFolderMapping",
+                    "target": "/usr/local/www/"
+                },
+                {
+                    "source": "/nginx.conf",
+                    "type": "fileFolderMapping",
+                    "target": "/usr/local/etc/nginx/"
+                },
+                {
+                    "value": "chown -R www:www /usr/local/www/",
+                    "type": "exec"
+                },
+                {
+                    "value": "sysrc nginx_enable=\"YES\"",
+                    "type": "exec"
+                },
+                {
+                    "value": "service nginx start",
+                    "type": "exec"
+                }
+            ]
+        },
+        "name": "test-www"
+    }
+}

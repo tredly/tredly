@@ -48,10 +48,21 @@ case "${_SUBCOMMANDS[0]}" in
         partition_destroy_containers "${_SUBCOMMANDS[1]}"
     ;;
     partition)
-        tredly-host destroy ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+        # validation
+        if [[ ${#_SUBCOMMANDS[@]} -gt 2 ]]; then
+            exit_with_error "Too many arguments received."
+        fi
+
+        partition_destroy "${_SUBCOMMANDS[1]}" "true"
+
     ;;
     partitions)
-        tredly-host destroy ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+        # validation
+        if [[ ${#_SUBCOMMANDS[@]} -gt 1 ]]; then
+            exit_with_error "Too many arguments received."
+        fi
+
+        partition_destroy_all
     ;;
     *)
         exit_with_error "Unknown destroy command '${_SUBCOMMANDS[0]}'"

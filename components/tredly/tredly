@@ -18,8 +18,8 @@ declare -a _SUBCOMMANDS
 declare -a _ENTIREFLAGS
 
 # versioning
-_VERSIONNUMBER="1.0.0"
-_VERSIONDATE="June 6 2016"
+_VERSIONNUMBER="1.0.0-rc.1"
+_VERSIONDATE="June 16 2016"
 
 _SHOW_HELP=false
 _ARGS=($@)
@@ -39,24 +39,25 @@ done
 
 _TREDLY_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
-# check where we're being executed from (SA-56)
+# check where we're being executed from
 if [[ "${_TREDLY_DIR}" == "/usr/local/sbin" ]]; then
+    # installed location
+
     # set some useful variables
-    _TREDLY_DIR_LIB="/usr/local/lib/tredly/common"
+    _TREDLY_DIR_LIB="/usr/local/lib/tredly/bash-common"
     _TREDLY_DIR_COMMANDS="/usr/local/lib/tredly/commands"
+    _TREDLY_DIR_CONF="/usr/local/etc/tredly"
 else
+    # non installed location
+    
     # set some useful variables
-    _TREDLY_DIR_LIB="${_TREDLY_DIR}/../../lib/common"
+    _TREDLY_DIR_LIB="${_TREDLY_DIR}/../tredly-libs/bash-common"
     _TREDLY_DIR_COMMANDS="${_TREDLY_DIR}/commands"
+    _TREDLY_DIR_CONF="${_TREDLY_DIR}/conf"
 fi
 
 # load the libs
 for f in ${_TREDLY_DIR_LIB}/*.sh; do source $f; done
-
-## Initalise the script. This will cause the script to fail if it
-## tries to access and uninitialised variable, or if any simple
-## command other than a control structure fails
-#cmn_init
 
 ## Ensure debugging is off to start with
 disable_debugging
@@ -113,14 +114,14 @@ elif [ ! -e "${_TREDLY_DIR_COMMANDS}/${_COMMAND}" ]; then
     exit_with_error "Unable to locate specified command."
 fi
 
-#if [ ! -e "${_TREDLY_DIR_CONF}/tredly-host.conf" ]; then
-    #exit_with_error "Missing tredly-host.conf in ${_TREDLY_DIR_CONF}"
-#else
+if [ ! -e "${_TREDLY_DIR_CONF}/tredly-host.conf" ]; then
+    exit_with_error "Missing tredly-host.conf in ${_TREDLY_DIR_CONF}"
+else
     # load tredly-host.conf
-    #if ! common_conf_parse "tredly-host"; then
-        #exit_with_error "There was an unknown error while attempting to load the tredly-host config."
-    #fi
-#fi
+    if ! common_conf_parse "tredly-host"; then
+        exit_with_error "There was an unknown error while attempting to load the tredly-host config."
+    fi
+fi
 
 # before we go any further, validate that the given partition actually exists
 if [[ -n ${_FLAGS[partition]} ]]; then

@@ -19,7 +19,13 @@ show_help "Available Commands:
 
 case "${_SUBCOMMANDS[0]}" in
     container)
-        tredly-host validate ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+        # validation
+        if [[ ${#_SUBCOMMANDS[@]} -gt 1 ]]; then
+            exit_with_error "Too many arguments received."
+        fi
+
+        # use tredly build to validate
+        tredly-build validate container ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
     ;;
     *)
         exit_with_error "Unknown validate command '${_SUBCOMMANDS[0]}'"

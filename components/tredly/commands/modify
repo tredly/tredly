@@ -38,13 +38,107 @@ show_help "Available Commands:
 
 case "${_SUBCOMMANDS[0]}" in
     defaultRelease)
-        tredly-host modify ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+        # ensure we received right number of args
+        if [[ ${#_SUBCOMMANDS[@]} -gt 1 ]]; then
+            exit_with_error "Too many arguments received."
+        fi
+
+        init_select_default_release
     ;;
     container)
-        tredly-host modify ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+        _maxCpu=''
+        _maxHdd=''
+        _maxRam=''
+        _ipv4Whitelist=''
+
+        # ensure we received right number of args
+        if [[ ${#_SUBCOMMANDS[@]} -gt 6 ]]; then
+            exit_with_error "Too many arguments received."
+        fi
+
+        # loop over the args received, populating the variables
+        for i in {2..5}; do
+            key="${_SUBCOMMANDS[${i}]%%=*}"
+            value="${_SUBCOMMANDS[${i}]#*=}"
+
+            # work out what it was that we received
+            case "${key}" in
+                CPU)
+                    _maxCpu="${value}"
+                ;;
+                HDD)
+                    _maxHdd="${value}"
+                ;;
+                RAM)
+                    _maxRam="${value}"
+                ;;
+                ipv4Whitelist)
+                    if [[ -z "${value}" ]]; then
+                        _ipv4Whitelist="clear"
+                    else
+                        _ipv4Whitelist="${value}"
+                    fi
+                ;;
+                *)
+                    if [[ -n "${key}" ]]; then
+                        exit_with_error "Invalid option \"${key}\""
+                    fi
+                ;;
+            esac
+        done
+
+        # modify the container
+        container_modify "${_SUBCOMMANDS[1]}" "${_maxHdd}" "${_maxCpu}" "${_maxRam}" "${_ipv4Whitelist}"
     ;;
     partition)
-        tredly-host modify ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+        _partition_name=''
+        _partition_cpu=''
+        _partition_hdd=''
+        _partition_ram=''
+        _partition_ip4whitelist=''
+
+        # ensure we received right number of args
+        if [[ ${#_SUBCOMMANDS[@]} -gt 6 ]]; then
+            exit_with_error "Too many arguments received."
+        fi
+
+        # loop over the args received, populating the variables
+        for i in {2..6}; do
+            key="${_SUBCOMMANDS[${i}]%%=*}"
+            value="${_SUBCOMMANDS[${i}]#*=}"
+
+            # work out what it was that we received
+            case "${key}" in
+                CPU)
+                    _partition_cpu="${value}"
+                ;;
+                HDD)
+                    _partition_hdd="${value}"
+                ;;
+                RAM)
+                    _partition_ram="${value}"
+                ;;
+                partitionName)
+                    _partition_name="${value}"
+                ;;
+                ipv4Whitelist)
+                    if [[ -z "${value}" ]]; then
+                        _partition_ip4whitelist="clear"
+                    else
+                        _partition_ip4whitelist="${value}"
+                    fi
+                ;;
+                *)
+                    if [[ -n "${key}" ]]; then
+                        exit_with_error "Invalid option \"${key}\""
+                    fi
+                ;;
+            esac
+        done
+
+        # modify the partition
+        partition_modify "${_SUBCOMMANDS[1]}" "${_partition_name}" "${_partition_hdd}" "${_partition_cpu}" "${_partition_ram}" "${_partition_ip4whitelist}"
+
     ;;
     *)
         exit_with_error "Unknown modify command '${_SUBCOMMANDS[0]}'"

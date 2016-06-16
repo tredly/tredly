@@ -3,8 +3,10 @@
 # get the directory where this script is located
 _DIR=$( dirname `pwd`/${0} )
 
+_TREDLY_INSTALL_DIR="${_DIR}/components/tredly-install"
+
 # include the vars shared between this and the bash script
-. ${_DIR}/tredly-install/install.vars.sh
+. ${_TREDLY_INSTALL_DIR}/install.vars.sh
 
 # make sure this user is root
 euid=$( id -u )
@@ -27,7 +29,7 @@ then
 fi
 
 # run the bash installer
-${_DIR}/tredly-install/bash_install.sh
+${_TREDLY_INSTALL_DIR}/bash_install.sh
 
 if test $? != 0
 then

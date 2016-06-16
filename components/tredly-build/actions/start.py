@@ -1,23 +1,26 @@
 # Performs actions requested by the user
 import builtins
-from tredly.container import *
-from tredly.tredlyfile import *
-from tredly.unboundfile import *
 from subprocess import Popen, PIPE
-# import global variables
-from includes.defines import *
-from includes.output import *
 import urllib.request
 import os.path
-from includes.util import *
-from objects.tredly.tredlyhost import TredlyHost
 import time
+
+from includes.util import *
+from includes.defines import *
+from includes.output import *
+from objects.tredly.tredlyhost import TredlyHost
+from objects.tredly.container import *
+from objects.tredly.tredlyfile import *
+from objects.tredly.unboundfile import *
 
 class ActionStart():
     def __init__(self, subject, target, identifier, actionArgs):
         if (subject == "container"):
             self.startContainer(target, actionArgs['ip4Addr'])
-            
+        else:
+            e_error("No command " + subject + " found.")
+            exit(1)
+
     # Start a container
     def startContainer(self, uuid, ip4Addr = None):
         startTime = time.time()

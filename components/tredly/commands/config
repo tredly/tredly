@@ -30,13 +30,40 @@ show_help "Available Commands:
 case "${_SUBCOMMANDS[0]}" in
     api)
         case "${_SUBCOMMANDS[1]}" in
+            init)
+                if [[ ${#_SUBCOMMANDS[@]} -gt 1 ]]; then
+                    exit_with_error "Too many arguments received."
+                fi
+                cd /usr/local/sbin/tredly-api
+                npm run config
+            ;;
             password)
                 # run the tredlyapi credentials command
                 service tredlyapi credentials
             ;;
             whitelist)
-                # run the whitelist command
-                tredly-host config ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+                # check the number of args received
+                if [[ ${#_SUBCOMMANDS[@]} -gt 4 ]]; then
+                    exit_with_error "Too many arguments received."
+                fi
+                
+                if [[ "${_SUBCOMMANDS[2]}" == 'clear' ]]; then
+                    ipfw table 20 flush
+                    if [[ $? -eq 0 ]]; then
+                        e_success "Success"
+                    else
+                        e_error "Failed"
+                    fi
+                else
+                    # add the ipfw rule for tredly-api
+                    ipfw_add_persistent_table_member "" "20" "${_SUBCOMMANDS[2]}"
+                    if [[ $? -eq 0 ]]; then
+                        e_success "Success"
+                    else
+                        e_error "Failed"
+                    fi
+                fi
+                
             ;;
             *)
                 exit_with_error "Unknown config api command '${_SUBCOMMANDS[1]}'"
@@ -46,7 +73,13 @@ case "${_SUBCOMMANDS[0]}" in
     container)
         case "${_SUBCOMMANDS[1]}" in
             subnet)
-                tredly-host config ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+                # check the number of args received
+                if [[ ${#_SUBCOMMANDS[@]} -gt 3 ]]; then
+                    exit_with_error "Too many arguments received."
+                fi
+
+                # update the subnet config data
+                ip4_set_container_subnet "${_SUBCOMMANDS[2]}"
             ;;
             *)
                 exit_with_error "Unknown config container command '${_SUBCOMMANDS[1]}'"
@@ -55,14 +88,39 @@ case "${_SUBCOMMANDS[0]}" in
     ;;
     host)
         case "${_SUBCOMMANDS[1]}" in
-            gateway)
-                tredly-host config ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+            DNS)
+                tredly-host config ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS}
             ;;
             hostname)
-                tredly-host config ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+                # check the number of args received
+                if [[ ${#_SUBCOMMANDS[@]} -gt 3 ]]; then
+                    exit_with_error "Too many arguments received."
+                fi
+
+                # update the hosts hostname
+                ip4_set_host_hostname "${_SUBCOMMANDS[2]}"
+            ;;
+            gateway)
+                # check the number of args received
+                if [[ ${#_SUBCOMMANDS[@]} -gt 3 ]]; then
+                    exit_with_error "Too many arguments received."
+                fi
+
+                # update the hosts gateway
+                ip4_set_host_gateway "${_SUBCOMMANDS[2]}"
             ;;
             network)
-                tredly-host config ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+                # check the number of args received
+                if [[ ${#_SUBCOMMANDS[@]} -gt 5 ]]; then
+                    exit_with_error "Too many arguments received."
+                fi
+                if [[ ${#_SUBCOMMANDS[@]} -lt 5 ]]; then
+                    exit_with_error "Too few arguments received."
+                fi
+                # update the network
+                ip4_set_host_network "${_SUBCOMMANDS[2]}" "${_SUBCOMMANDS[3]}"
+                # update the hosts gateway
+                ip4_set_host_gateway "${_SUBCOMMANDS[4]}"
             ;;
             *)
                 exit_with_error "Unknown config host command '${_SUBCOMMANDS[1]}'"

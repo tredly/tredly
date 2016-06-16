@@ -21,7 +21,7 @@ None
 * com.tredly:containerversion - The container version
 * com.tredly:containergroupname - The container group name
 * com.tredly:containergroupversion - The container group version
-* com.tredly:persistentstorageuuid - UUID of persistent storage ZFS dataset
+* com.tredly:persistentstorageid - UUID of persistent storage ZFS dataset
 * com.tredly:persistentmountpoint - Where persistent storage is mounted
 * com.tredly:persistentdataset - The dataset of the mounted persistent storage
 * com.tredly:anchorname - Anchor name within PF with this container's firewall rules

@@ -6,6 +6,7 @@ PREFIX="/usr/local"
 MAN=
 BINDIR="${PREFIX}/sbin"
 COMMANDSDIR="${PREFIX}/lib/tredly/commands"
+CONFDIR="${PREFIX}/etc/tredly"
 INSTALL=/usr/bin/install
 MKDIR="mkdir"
 RM="rm"
@@ -28,6 +29,21 @@ function get_files_source() {
     echo "${TREDLY_DIR}"
 }
 
+function show_help() {
+    echo "Tredly-Core installer"
+    echo ""
+    echo "Usage:"
+    echo "    `basename "$0"` install: install Tredly-Core"
+    echo "    `basename "$0"` uninstall: uninstall Tredly-Core"
+    echo "    `basename "$0"` install clean: remove all previously installed files and install Tredly-Core"
+}
+
+# check that we received args
+if [[ ${#@} -eq 0 ]]; then
+    show_help
+    exit 1
+fi
+
 # where the files are located
 FILESSOURCE=$( get_files_source )
 
@@ -46,8 +62,11 @@ for arg in "$@"; do
             echo "Installing Tredly-Core..."
             ${MKDIR} -p "${BINDIR}"
             ${MKDIR} -p "${COMMANDSDIR}"
+            ${MKDIR} -p "${CONFDIR}"
             ${INSTALL} -c -m ${BINMODE} "${FILESSOURCE}/${SCRIPTS}" "${BINDIR}/"
             ${INSTALL} -c "${FILESSOURCE}/commands/"* "${COMMANDSDIR}"
+            ${INSTALL} -c "${FILESSOURCE}/conf/tredly-host.conf.dist" "${CONFDIR}/tredly-host.conf"
+            
             echo "Tredly-Core installed."
             ;;
         uninstall)
@@ -60,12 +79,7 @@ for arg in "$@"; do
             # do nothing, this is just here to prevent clean being handled as *
             ;;
         *)
-            echo "Tredly-Core installer"
-            echo ""
-            echo "Usage:"
-            echo "    `basename "$0"` install: install tredly-Core"
-            echo "    `basename "$0"` uninstall: uninstall tredly-Core"
-            echo "    `basename "$0"` install clean: remove all previously installed files and install tredly-Core"
+            show_help
             ;;
     esac
 done

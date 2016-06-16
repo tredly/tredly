@@ -19,7 +19,7 @@ show_help "Available Commands:
     Examples:
         $(basename "$0") create container
         $(basename "$0") create container --containerName=mycontainer
-        $(basename "$0") create container --ip4_addr=em0|192.168.0.5/24
+        $(basename "$0") create container --ip4_addr=\"bridge0|192.168.0.5/24\"
         $(basename "$0") create container --partition=customer1
         
     partition
@@ -39,14 +39,49 @@ show_help "Available Commands:
         $(basename "$0") create partiton customer2 CPU=1 RAM=1G
         $(basename "$0") create partiton customer2 CPU=1 HDD=20G RAM=1G
 "
-    
+
 
 case "${_SUBCOMMANDS[0]}" in
     container)
         tredly-build create ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
     ;;
     partition)
-        tredly-host create ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+        _partition_cpu=''
+        _partition_hdd=''
+        _partition_ram=''
+
+        # ensure we received right number of args
+        if [[ ${#_SUBCOMMANDS[@]} -gt 5 ]]; then
+            exit_with_error "Too many arguments received."
+        fi
+
+        # loop over the args received, populating the variables
+        for i in {2..4}; do
+            key="${_SUBCOMMANDS[${i}]%%=*}"
+            value="${_SUBCOMMANDS[${i}]#*=}"
+
+            # work out what it was that we received
+            case "${key}" in
+                CPU)
+                    _partition_cpu="${value}"
+                ;;
+                HDD)
+                    _partition_hdd="${value}"
+                ;;
+                RAM)
+                    _partition_ram="${value}"
+                ;;
+                *)
+                    if [[ -n "${key}" ]]; then
+                        exit_with_error "Invalid option \"${key}\""
+                    fi
+                ;;
+            esac
+        done
+
+        # create the partition
+        partition_create "${_SUBCOMMANDS[1]}" "${_partition_hdd}" "${_partition_cpu}" "${_partition_ram}"
+
     ;;
     *)
         exit_with_error "Unknown create command \"${_SUBCOMMANDS[0]}\""

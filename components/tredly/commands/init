@@ -3,4 +3,4 @@
 show_help "init -- Initialises the Tredly environment.
 "
 # set up the environment
-tredly-host init
+init_environment

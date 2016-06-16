@@ -1,20 +1,21 @@
 # Performs actions requested by the user
 import builtins
-from tredly.container import *
-from tredly.tredlyfile import *
-from tredly.unboundfile import *
 from subprocess import Popen, PIPE
-# import global variables
-from includes.defines import *
-from includes.output import *
 import urllib.request
 import os.path
-from includes.util import *
-from objects.tredly.tredlyhost import TredlyHost
 import time
-from objects.layer4proxy.layer4proxyfile import *
 from datetime import datetime, timedelta
 import shutil
+import signal
+
+from includes.util import *
+from includes.defines import *
+from includes.output import *
+from objects.tredly.container import *
+from objects.tredly.tredlyfile import *
+from objects.tredly.unboundfile import *
+from objects.layer4proxy.layer4proxyfile import *
+from objects.tredly.tredlyhost import TredlyHost
 
 class ActionReplace:
     def __init__(self, subject, target, identifier, actionArgs):
@@ -33,7 +34,11 @@ class ActionReplace:
 
         if (subject == "container"):
             self.replaceContainer(actionArgs['containerName'], identifier, target, actionArgs['path'], actionArgs['ip4Addr'])
-            
+        else:
+            e_error("No command " + subject + " found.")
+            exit(1)
+
+
     # replace a container
     def replaceContainer(self, containerName, uuidToReplace, partitionName, tredlyFilePath, ip4Addr = None):
         tredlyHost = TredlyHost()
@@ -44,11 +49,8 @@ class ActionReplace:
         if (partitionName is None):
             e_error("Please include a partition name.")
             exit(1)
-            
-        if (tredlyFilePath is None):
-            e_error("Please specify the path of the new container")
-            exit(1)
-            
+        
+        
         # validate the manual ip4_addr if it was passed
         if (ip4Addr is not None):
             # validate it
@@ -76,8 +78,13 @@ class ActionReplace:
         
         
         # process the tredlyfile
-        builtins.tredlyFile = TredlyFile(tredlyFilePath + "/Tredlyfile")
-    
+        builtins.tredlyFile = TredlyFile(tredlyFilePath)
+        
+        # validate it
+        if (not builtins.tredlyFile.validate()):
+            e_error("Failed to validate Tredlyfile")
+            exit(1)
+        
         # set the new container name'
         if (containerName is None):
             # get from tredlyfile
@@ -115,6 +122,7 @@ class ActionReplace:
         
         zfsTredly = ZFSDataset(ZFS_TREDLY_DATASET)
         defaultRelease = zfsTredly.getProperty(ZFS_PROP_ROOT + ':default_release_name')
+        
         # create the container
         # get a container object
         newContainer = Container(partitionName, defaultRelease)
@@ -128,18 +136,50 @@ class ActionReplace:
     
         e_header("Creating Container - " + newContainer.name + ' in partition ' + newContainer.partitionName)
         
+        # capture the sigint handler
+        def sigintDestroyContainer(signal, frame):
+            e_warning("Caught SIGINT. Cleaning up...")
+            # if the container is running then stop it
+            if (newContainer.isRunning()):
+                newContainer.stop()
+            
+            # now destroy it
+            newContainer.destroy()
+            
+            # if the old container exists then rename it and unset its state
+            if (tredlyHost.containerExists(oldContainerUUID, partitionName)):
+                # set the original containers name back to what it was before replace
+                zfsOldContainer.setProperty(ZFS_PROP_ROOT + ':containername', oldContainerName)
+                # and remove the replacing state
+                zfsOldContainer.unsetProperty(ZFS_PROP_ROOT + ':containerstate')
+
+            # http://www.tldp.org/LDP/abs/html/exitcodes.html
+            exit(130)
+        
+        # catch sigint
+        signal.signal(signal.SIGINT, sigintDestroyContainer)
+        
         # create container on the filesystem
         if (not newContainer.create()):
             # container create failed so rename the old container back
             e_error("Failed to create new container")
-            # set the name back 
-            zfsOldContainer.setProperty(ZFS_PROP_ROOT + ':containername', oldContainerName)
+            
+            # change the name back if the old container exists
+            if (tredlyHost.containerExists(oldContainerUUID, partitionName)):
+                # set the name back 
+                zfsOldContainer.setProperty(ZFS_PROP_ROOT + ':containername', oldContainerName)
+            
+            exit(1)
         
         # start the container
         newContainer.start(containerInterface, containerIp4, containerCidr)
         
+        # the new container has been created so we're no longer interested incapturing sigint
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+        
         # destroy the old container if it exists on this partition
         if (tredlyHost.containerExists(oldContainerUUID, partitionName)):
+
             # load the container from ZFS
             oldContainer = Container()
             

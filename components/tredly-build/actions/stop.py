@@ -1,28 +1,28 @@
 # Performs actions requested by the user
 import builtins
-from tredly.container import *
-from tredly.tredlyfile import *
-from tredly.unboundfile import *
 from subprocess import Popen, PIPE
-# import global variables
-from includes.defines import *
-from includes.output import *
 import urllib.request
 import os.path
 from includes.util import *
-from objects.tredly.tredlyhost import TredlyHost
 import time
-from objects.layer4proxy.layer4proxyfile import *
 from datetime import datetime, timedelta
 import shutil
+
+from includes.defines import *
+from includes.output import *
+from objects.tredly.container import *
+from objects.tredly.tredlyfile import *
+from objects.tredly.unboundfile import *
+from objects.tredly.tredlyhost import TredlyHost
+from objects.layer4proxy.layer4proxyfile import *
 
 class ActionStop():
     def __init__(self, subject, target, identifier, actionArgs):
         if (subject == "container"):
             self.stopContainer(target)
         else:
-            e_error("Command " + subject + " not found.")
-            
+            e_error("No command " + subject + " found.")
+            exit(1)
 
     # stop a container
     def stopContainer(self, uuid):

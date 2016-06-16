@@ -13,10 +13,22 @@ Options:
 
 case "${_SUBCOMMANDS[0]}" in
     containers)
-        tredly-host list ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+        # validation
+        if [[ ${#_SUBCOMMANDS[@]} -gt 3 ]]; then
+            exit_with_error "Too many arguments received."
+        fi
+
+        # list the containers
+        list_containers "${_SUBCOMMANDS[1]}" "${_SUBCOMMANDS[2]}"
+
     ;;
     partitions)
-        tredly-host list ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+        # validation
+        if [[ ${#_SUBCOMMANDS[@]} -gt 1 ]]; then
+            exit_with_error "Too many arguments received."
+        fi
+
+        partition_list
     ;;
     *)
         exit_with_error "Unknown list command \"${_SUBCOMMANDS[0]}\""

@@ -10,4 +10,4 @@ Options:
 Examples:
     $(basename "$0") console cf4c225f"
 
-tredly-host console ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+container_console "${2}"

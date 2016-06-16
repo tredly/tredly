@@ -1,26 +1,28 @@
 # Performs actions requested by the user
 import builtins
-from tredly.container import *
-from tredly.tredlyfile import *
-from tredly.unboundfile import *
 from subprocess import Popen, PIPE
-# import global variables
-from includes.defines import *
-from includes.output import *
 import urllib.request
 import os.path
-from includes.util import *
-from objects.tredly.tredlyhost import TredlyHost
 import time
-from objects.layer4proxy.layer4proxyfile import *
 from datetime import datetime, timedelta
+
+from objects.tredly.container import *
+from objects.tredly.tredlyfile import *
+from objects.tredly.unboundfile import *
+from objects.layer4proxy.layer4proxyfile import *
+from objects.tredly.tredlyhost import TredlyHost
+from includes.util import *
+from includes.defines import *
+from includes.output import *
 
 class ActionDestroy:
     def __init__(self, subject, target, identifier, actionArgs):
         # check the subject of this action
         if (subject == "container"):
             self.destroyContainer(target)
-        
+        else:
+            e_error("No command " + subject + " found.")
+            exit(1)
         
     # Destroy a container
     def destroyContainer(self, uuid):
@@ -79,8 +81,9 @@ class ActionDestroy:
         container.stop()
     
         # destroy the container
+        destroyResult = container.destroy()
         e_note("Destroying container " + str(container.name))
-        if (container.destroy()):
+        if (destroyResult):
             e_success("Success")
         else:
             e_error("Failed")

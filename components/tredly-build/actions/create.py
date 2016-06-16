@@ -1,18 +1,20 @@
 # Performs actions requested by the user
 import builtins
-from tredly.container import *
-from tredly.tredlyfile import *
-from tredly.unboundfile import *
 from subprocess import Popen, PIPE
-# import global variables
-from includes.defines import *
-from includes.output import *
 import urllib.request
 import os.path
-from includes.util import *
-from objects.tredly.tredlyhost import TredlyHost
 import time
 import argparse
+import signal
+
+from objects.tredly.container import *
+from objects.tredly.tredlyfile import *
+from objects.tredly.unboundfile import *
+from objects.tredly.tredlyhost import TredlyHost
+from includes.util import *
+from includes.defines import *
+from includes.output import *
+
 
 class ActionCreate:
     def __init__(self, subject, target, identifier, actionArgs):
@@ -33,7 +35,11 @@ class ActionCreate:
         # check the subject of this action
         if (subject == "container"):
             self.createContainer(actionArgs['containerName'], actionArgs['partitionName'], actionArgs['path'], actionArgs['ip4Addr'])
-        
+        else:
+            e_error("No command " + subject + " found.")
+            exit(1)
+
+
     # Create a container
     def createContainer(self, containerName, partitionName, tredlyFilePath, ip4Addr = None, ignoreExisting = False):
         tredlyHost = TredlyHost()
@@ -46,14 +52,14 @@ class ActionCreate:
         # make sure a default release is set in zfs
         zfsTredly = ZFSDataset(ZFS_TREDLY_DATASET)
         defaultRelease = zfsTredly.getProperty(ZFS_PROP_ROOT + ':default_release_name')
-        
-        # make sure the Tredlyfile exists
-        if (not os.path.isfile(tredlyFilePath + "/Tredlyfile")):
-            e_error("Could not find Tredlyfile at " + tredlyFilePath)
-            exit(1)
     
         # Process the tredlyfile
-        builtins.tredlyFile = TredlyFile(tredlyFilePath + "/Tredlyfile")
+        builtins.tredlyFile = TredlyFile(tredlyFilePath)
+        
+        # validate it
+        if (not builtins.tredlyFile.validate()):
+            e_error("Failed to validate Tredlyfile")
+            exit(1)
         
         # allow containername to be overridden
         if (containerName is None):
@@ -113,11 +119,29 @@ class ActionCreate:
         
         # set the correct container name if it was passed to us
         container.name = containerName
-    
+        
         e_header("Creating Container - " + container.name + ' in partition ' + container.partitionName)
         
+        # capture the sigint handler
+        def sigintDestroyContainer(signal, frame):
+            e_warning("Caught SIGINT. Cleaning up...")
+            # if the container is running then stop it
+            if (container.isRunning()):
+                container.stop()
+            
+            # now destroy it
+            container.destroy()
+
+            # http://www.tldp.org/LDP/abs/html/exitcodes.html
+            exit(130)
+        
+        # catch sigint
+        signal.signal(signal.SIGINT, sigintDestroyContainer)
+        
         # create container on the filesystem
-        container.create()
+        if (not container.create()):
+            e_error("Failed to create container")
+            exit(1)
         
         # start the container
         container.start(containerInterface, containerIp4, containerCidr)

@@ -3,11 +3,9 @@
 PREFIX="/usr/local"
 MAN=
 BINDIR="${PREFIX}/sbin"
-LIBDIR="${PREFIX}/lib/tredly"
+LIBDIR="${PREFIX}/lib/tredly-build"
 CONFDIR="${PREFIX}/etc/tredly"
 ACTIONSDIR="${LIBDIR}/actions"
-INCLUDESDIR="${LIBDIR}/includes"
-OBJECTSDIR="${LIBDIR}/objects"
 INSTALL="/usr/bin/install"
 MKDIR="mkdir"
 RM="rm"
@@ -16,13 +14,20 @@ BINMODE="500"
 SCRIPTS="tredly-build"
 SCRIPTSDIR="${PREFIX}/BINDIR"
 
+function show_help() {
+    echo "Tredly-Build installer"
+    echo ""
+    echo "Usage:"
+    echo "    `basename "$0"` install: install Tredly-Build"
+    echo "    `basename "$0"` uninstall: uninstall Tredly-Build"
+    echo "    `basename "$0"` install clean: remove all previously installed files and install Tredly-Build"
+}
+
 # cleans/uninstalls tredly
 function clean() {
     # remove any installed files
     ${RM} -f "${BINDIR}/${SCRIPTS}"
     ${RM} -rf "${ACTIONSDIR}/"*
-    ${RM} -rf "${INCLUDESDIR}/"*
-    ${RM} -rf "${OBJECTSDIR}/"*
 
     ${RM} -f "${CONFDIR}/json/tredlyfile.schema.json"
     
@@ -34,6 +39,12 @@ function get_files_source() {
 
     echo "${TREDLY_DIR}"
 }
+
+# check that we received args
+if [[ ${#@} -eq 0 ]]; then
+    show_help
+    exit 1
+fi
 
 # where the files are located
 FILESSOURCE=$( get_files_source )
@@ -56,12 +67,10 @@ for arg in "$@"; do
             ${MKDIR} -p "${LIBDIR}"
             ${MKDIR} -p "${CONFDIR}/json"
             ${MKDIR} -p "${ACTIONSDIR}"
-            ${MKDIR} -p "${INCLUDESDIR}"
-            ${MKDIR} -p "${OBJECTSDIR}"
             ${INSTALL} -c -m ${BINMODE} "${FILESSOURCE}/${SCRIPTS}" "${BINDIR}/"
+
             cp -R "${FILESSOURCE}/actions/" "${ACTIONSDIR}"
-            cp -R "${FILESSOURCE}/includes/" "${INCLUDESDIR}"
-            cp -R "${FILESSOURCE}/objects/" "${OBJECTSDIR}"
+
             cp "${FILESSOURCE}/json/tredlyfile.schema.json" "${CONFDIR}/json/"
 
             echo "Tredly-Build installed."
@@ -76,12 +85,7 @@ for arg in "$@"; do
             # do nothing, this is just here to prevent clean being handled as *
             ;;
         *)
-            echo "Tredly-Build installer"
-            echo ""
-            echo "Usage:"
-            echo "    `basename "$0"` install: install tredly-build"
-            echo "    `basename "$0"` uninstall: uninstall tredly-build"
-            echo "    `basename "$0"` install clean: remove all previously installed files and install tredly-build"
+            show_help
             ;;
     esac
 done

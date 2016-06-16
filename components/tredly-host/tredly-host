@@ -1,126 +1,139 @@
-#!/usr/bin/env bash
+#!/usr/bin/env python3.5
 
-# an array to contain PIDs of any forked processes for cleanup
-declare -a _CHILDPIDS
-# cleans up anything tredly has done
-function tredly_cleanup() {
-    # clean up any children we invoked
-    for pid in "${_CHILDPIDS[@]}"; do
-        kill -9 ${pid} > /dev/null 2>&1
-    done
-}
+# import modules
+import builtins
+import argparse
+import os.path
+import sys
+import signal
+import urllib.request
+import tarfile
+import ssl
+import importlib
 
-# trap exit so that we can clean up
-trap tredly_cleanup EXIT
+# capture the sigint handler
+def sigintHandler(signal, frame):
+    print('')
+    print('SIGINT caught. Exiting...')
+    # http://www.tldp.org/LDP/abs/html/exitcodes.html
+    exit(130)
 
-declare _COMMAND=""
-declare -a _SUBCOMMANDS
-declare -A _FLAGS
+# catch sigint
+signal.signal(signal.SIGINT, sigintHandler)
 
-# versioning
-_VERSIONNUMBER="1.0.0-beta"
-_VERSIONDATE="June 3 2016"
+# set the path to the directory containing this script
+builtins.scriptDirectory = os.path.dirname(os.path.realpath(__file__))
 
-_SHOW_HELP=false
-_ARGS=($@)
-_DEBUG=false
+# work out whether this is an installed or non installed version
+# and include this scripts directories in the path
 
-SOURCE="${BASH_SOURCE[0]}"
+if (builtins.scriptDirectory == "/usr/local/sbin"):
+    sys.path.insert(0, "/usr/local/lib/tredly-host")
+    sys.path.insert(0, "/usr/local/lib/tredly/python-common")
+    builtins.tredlyConfDirectory = "/usr/local/etc/tredly"
+    builtins.tredlyJsonDirectory = "/usr/local/etc/tredly/json"
+else:
+    print("\033[43m\033[97mWARNING: Running from non installed location\033[49m\033[39m")
+    sys.path.insert(0, builtins.scriptDirectory)
+    sys.path.insert(0, builtins.scriptDirectory + "/../tredly-libs/python-common")
+    builtins.tredlyConfDirectory = builtins.scriptDirectory + "/../tredly/conf"
 
-# resolve $SOURCE until the file is no longer a symlink
-while [ -h "$SOURCE" ]
-do
-    _TREDLY_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
-    SOURCE="$(readlink "$SOURCE")"
+# import modules
+from objects.config.configfile import ConfigFile
+from objects.zfs.zfs import ZFSDataset
 
-    # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
-    [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
-done
+from objects.tredly.tredlyhost import *
 
-_TREDLY_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+# include global modules
+from includes.defines import *
+from includes.util import *
+from includes.output import *
 
-# check where we're being executed from
-if [[ "${_TREDLY_DIR}" == "/usr/local/sbin" ]]; then
-    # installed location
+# set some constants
+SHOW_HELP = False
+DEBUG = False
+VERBOSE= False
+SCRIPTNAME = os.path.basename(__file__)
 
-    # set some useful variables
-    _TREDLY_DIR_LIB="/usr/local/lib/tredly/common"
-    _TREDLY_DIR_COMMANDS="/usr/local/lib/tredly-host/commands"
-    _TREDLY_DIR_CONF="/usr/local/etc/tredly"
-else
-    # non installed location
+# get an argparser object
+argParser = argparse.ArgumentParser(description=SCRIPTNAME)
 
-    # set some useful variables
-    _TREDLY_DIR_LIB="${_TREDLY_DIR}/../../lib/common"
-    _TREDLY_DIR_COMMANDS="${_TREDLY_DIR}/commands"
-    _TREDLY_DIR_CONF="${_TREDLY_DIR}/../../conf"
-fi
+# set up arguments in argparser
+argParser.add_argument('action', help='init create destroy list modify replace')
+argParser.add_argument('subject', nargs='?', help='container etc')
+argParser.add_argument('target', nargs='?', help='partition etc')
+argParser.add_argument('identifier', nargs='?', help='identifier - uuid etc')
 
-# load the libs
-for f in ${_TREDLY_DIR_LIB}/*.sh; do source $f; done
+argParser.add_argument('-d', '--debug', action='store_true', help='Enable debug mode')
+argParser.add_argument('--verbose', action='store_true', help='Enable verbose mode')
+argParser.add_argument('-v', '--version', action='store_true', help='Show version')
 
-## Ensure debugging is off to start with
-disable_debugging
+# parse args
+args = argParser.parse_args()
 
-## Process command line arguments
-for i in "$@"
-do
-    # Key/Value pair (--x=y)
-    if [[ "$i" =~ ^--[^=]+= ]]; then
-        declare local key=${i%%=*}; key=${key:2}
-        _FLAGS["${key}"]="${i#*=}"
+actionArgs = {}
 
-    # Help/Usage flag
-    elif [[ "$i" =~ ^(--help|--usage|-h) ]]; then
-        _SHOW_HELP=true
+# If version requested then display and exit
+if (args.action == "version"):
+    # print the version
+    print(SCRIPTNAME + ": version " + VERSION_NUMBER + " (built " + VERSION_DATE + ")")
+    exit(0)
 
-    ## Debug flag
-    elif [[ "$i" =~ ^(--debug|-d) ]]; then
-        enable_debugging
+# get a tredlyhost object
+tredlyHost = TredlyHost()
 
-    elif [[ "$i" =~ ^(--verbose) ]]; then
-        _VERBOSE_MODE=true
+# enable debug mode if requested
+if (args.debug):
+    DEBUG = True
 
-    ## Version flag
-    elif [[ "$i" =~ ^(--version|-v) ]]; then
-    printf "$(basename "$0") ${_VERSIONNUMBER} (built: ${_VERSIONDATE})\n"; exit
+# enable verbose mode if requested
+if (args.verbose):
+    VERBOSE = True
 
-    ## get the first value that isn't a flag and save it as the command
-    elif [[ -z "${_COMMAND}" ]]
-    then
-        _COMMAND="$i"
 
-    ## This will put anything that is not either --x=y, -d, --debug, -h, --usage or --help into a
-    ## seperate array. The conditional part is to keep _COMMAND out also, effectively skipping the
-    ## first parameter.
-    elif [[ ! "${i}" == "${_COMMAND}" ]]
-    then
-        _SUBCOMMANDS=("${_SUBCOMMANDS[@]}" "$i")
+# make sure the base ZFS datasets are present
+zfsTredly = ZFSDataset(ZFS_TREDLY_DATASET)
+if (not zfsTredly.exists()):
+    e_error("Dataset " + ZFS_TREDLY_DATASET + " does not exist. Please run tredly init")
+    exit(1)
 
-    fi
-done
+zfsReleases = ZFSDataset(ZFS_TREDLY_RELEASES_DATASET)
+if (not zfsReleases.exists()):
+    e_error("Dataset " + ZFS_TREDLY_RELEASES_DATASET + " does not exist. Please run tredly init")
+    exit(1)
 
-## Display the main help file if necessary
-if [[ -z "${_COMMAND}" ]]; then
-    show_help "${_HELP}"
-fi
+zfsPartitions = ZFSDataset(ZFS_TREDLY_PARTITIONS_DATASET)
+if (not zfsPartitions.exists()):
+    e_error("Dataset " + ZFS_TREDLY_PARTITIONS_DATASET + " does not exist. Please run tredly init")
+    exit(1)
 
-## Run the command requested
-if [ -z "${_COMMAND}" ]; then
-    exit_with_error "COMMAND is required."
+zfsDefaultPartition = ZFSDataset(ZFS_TREDLY_PARTITIONS_DATASET + '/' + TREDLY_DEFAULT_PARTITION)
+if (not zfsDefaultPartition.exists()):
+    e_error("Dataset " + ZFS_TREDLY_PARTITIONS_DATASET + '/' + TREDLY_DEFAULT_PARTITION + " does not exist. Please run tredly init")
+    exit(1)
 
-elif [ ! -e "${_TREDLY_DIR_COMMANDS}/${_COMMAND}" ]; then
-    exit_with_error "Unable to locate specified command."
-fi
+# process the config file
+builtins.tredlyCommonConfig = ConfigFile()
+# parse it
+builtins.tredlyCommonConfig.process()
 
-if [ ! -e "${_TREDLY_DIR_CONF}/tredly-host.conf" ]; then
-    exit_with_error "Missing tredly-host.conf in ${_TREDLY_DIR_CONF}"
-else
-    # load tredly-host.conf
-    if ! common_conf_parse "tredly-host"; then
-        exit_with_error "There was an unknown error while attempting to load the tredly-host config."
-    fi
-fi
+# validate hte common config
+if (not builtins.tredlyCommonConfig.validate()):
+    exit_with_error("Failed to validate tredly-host.conf")
 
-source "${_TREDLY_DIR_COMMANDS}/${_COMMAND}"
-exit 0
+# try loading the action module
+try:
+    # dynamically load the module
+    mod = importlib.import_module("actions." + args.action.lower())
+except ImportError as e:
+    e_error('No action "' + args.action.lower() + '" found.')
+    exit(1)
+
+# get a handle to the module
+actionMod = getattr(mod, "Action" + args.action[0].upper() + args.action[1:].lower())
+
+# initialise the object and run the command
+actionObj = actionMod(args.subject, args.target, args.identifier, actionArgs)
+
+# exit with code 0 if we reached this point
+exit(0)

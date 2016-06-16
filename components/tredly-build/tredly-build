@@ -5,45 +5,33 @@ import builtins
 import argparse
 import os.path
 import sys
-import signal
 import urllib.request
 import tarfile
 import ssl
 import importlib
-
-# capture the sigint handler
-def sigintHandler(signal, frame):
-    print('')
-    print('SIGINT caught. Exiting...')
-    exit(2)
-
-# catch sigint
-signal.signal(signal.SIGINT, sigintHandler)
 
 # set the path to the directory containing this script
 builtins.scriptDirectory = os.path.dirname(os.path.realpath(__file__))
 
 # work out whether this is an installed or non installed version
 # and include this scripts directories in the path
+
 if (builtins.scriptDirectory == "/usr/local/sbin"):
-    sys.path.insert(0, "/usr/local/lib/tredly")
-    sys.path.insert(0, "/usr/local/lib/tredly/actions")
-    sys.path.insert(0, "/usr/local/lib/tredly/includes")
-    sys.path.insert(0, "/usr/local/lib/tredly/objects")
+    sys.path.insert(0, "/usr/local/lib/tredly-build")
+    sys.path.insert(0, "/usr/local/lib/tredly/python-common")
     builtins.tredlyConfDirectory = "/usr/local/etc/tredly"
     builtins.tredlyJsonDirectory = "/usr/local/etc/tredly/json"
 else:
     print("\033[43m\033[97mWARNING: Running from non installed location\033[49m\033[39m")
-    sys.path.insert(0, builtins.scriptDirectory + "/actions")
-    sys.path.insert(0, builtins.scriptDirectory + "/includes")
-    sys.path.insert(0, builtins.scriptDirectory + "/objects")
+    sys.path.insert(0, builtins.scriptDirectory)
+    sys.path.insert(0, builtins.scriptDirectory + "/../tredly-libs/python-common")
     sys.path.insert(0, builtins.scriptDirectory + "/tests")
-    builtins.tredlyConfDirectory = builtins.scriptDirectory + "/../../conf"
+    builtins.tredlyConfDirectory = builtins.scriptDirectory + "/../tredly/conf"
     builtins.tredlyJsonDirectory = builtins.scriptDirectory + "/json"
 
 # import modules
-from config.configfile import ConfigFile
-from zfs.zfs import ZFSDataset
+from objects.config.configfile import ConfigFile
+from objects.zfs.zfs import ZFSDataset
 
 from objects.tredly.tredlyhost import *
 
@@ -69,8 +57,7 @@ argParser.add_argument('identifier', nargs='?', help='identifier - uuid etc')
 
 argParser.add_argument('--containerName', help='Override container name')
 argParser.add_argument('--ip4_addr', help='Override container networking. eg --ip4_addr="bridge0|192.168.0.5/24"')
-#argParser.add_argument('--location', help='Path to Tredlyfile. Can be HTTP(S) or a local directory.')
-argParser.add_argument('--path', help='Path to Tredlyfile. Can be HTTP(S) or a local directory.')
+argParser.add_argument('--location', help='Path to Tredlyfile. Can be HTTP(S) or a local directory.')
 argParser.add_argument('-d', '--debug', action='store_true', help='Enable debug mode')
 argParser.add_argument('--verbose', action='store_true', help='Enable verbose mode')
 argParser.add_argument('-v', '--version', action='store_true', help='Show version')
@@ -100,25 +87,25 @@ actionArgs = {}
 actionArgs['containerName'] = args.containerName
 actionArgs['ip4Addr'] = args.ip4_addr
 
-# default partiton name is "default"
+# default partition name is "default"
 actionArgs['partitionName'] = "default"
 
 # use current directory by default
 actionArgs['path'] = ".";
-# see if --path was passed and check if its a local or remote path
+# see if --location was passed and check if its a local or remote path
 # if not set then assume current directory for path
-if (args.path is not None):
+if (args.location is not None):
     # support http, https, and ftp
-    if (args.path.startswith('http://') or args.path.startswith('https://') or args.path.startswith('ftp://')):
+    if (args.location.startswith('http://') or args.location.startswith('https://') or args.location.startswith('ftp://')):
         
-        e_note("Fetching " + args.path)
+        e_note("Fetching " + args.location)
         
         # get a uuid for this download
         uuid = generateShortUUID()
         
         # set where to download this file to
         destinationDir = TREDLY_PARTITIONS_MOUNT + '/' + partitionName + '/' + TREDLY_PTN_DATA_DIR_NAME + '/' + TREDLY_PTN_REMOTECONTAINERS_DIR_NAME + '/' + uuid
-        destinationFile = args.path.split('/')[-1]
+        destinationFile = args.location.split('/')[-1]
 
         # create a directory for the container
         try:
@@ -136,7 +123,7 @@ if (args.path is not None):
             #ctx.verify_mode = ssl.CERT_NONE
             
             # download it
-            with urllib.request.urlopen(args.path, context=ctx) as u, open(destinationDir + '/' + destinationFile, 'wb') as f:
+            with urllib.request.urlopen(args.location, context=ctx) as u, open(destinationDir + '/' + destinationFile, 'wb') as f:
                 # write it to file
                 f.write(u.read())
         except ssl.CertificateError:
@@ -144,7 +131,7 @@ if (args.path is not None):
             exit(1)
         except:
             # catch 404 errors etc
-            e_error("An error occurred when downloading " + args.path)
+            e_error("An error occurred when downloading " + args.location)
             exit(1)
         
         # extract the file
@@ -155,14 +142,26 @@ if (args.path is not None):
                 
                 # now set the path to be where we extracted the file to and proceed with building
                 actionArgs['path'] = destinationDir + '/container'
+                
+
         except:
             e_error("Failed to extract the file")
             exit(1)
 
-    elif (os.path.isdir(args.path)):    # check local path
-        actionArgs['path'] = args.path
+    elif (os.path.isdir(args.location)):    # check local path
+        # find the tredlyfile
+        actionArgs['path'] = args.location
+        
     else:
-        e_error("Directory " + args.path + " not found")
+        e_error("Directory " + args.location + " not found")
+        exit(1)
+
+    # find the tredlyfile
+    actionArgs['path'] = findTredlyFile(actionArgs['path'])
+    
+    if (actionArgs['path'] is None):
+        # error and exit
+        e_error("Could not find a Tredly file at " + args.location)
         exit(1)
 
 # make sure the base ZFS datasets are present

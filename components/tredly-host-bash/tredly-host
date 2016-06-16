@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+
+# an array to contain PIDs of any forked processes for cleanup
+declare -a _CHILDPIDS
+# cleans up anything tredly has done
+function tredly_cleanup() {
+    # clean up any children we invoked
+    for pid in "${_CHILDPIDS[@]}"; do
+        kill -9 ${pid} > /dev/null 2>&1
+    done
+}
+
+# trap exit so that we can clean up
+trap tredly_cleanup EXIT
+
+declare _COMMAND=""
+declare -a _SUBCOMMANDS
+declare -A _FLAGS
+
+# versioning
+_VERSIONNUMBER="1.0.0-rc.1"
+_VERSIONDATE="June 16 2016"
+
+_SHOW_HELP=false
+_ARGS=($@)
+_DEBUG=false
+
+SOURCE="${BASH_SOURCE[0]}"
+
+# resolve $SOURCE until the file is no longer a symlink
+while [ -h "$SOURCE" ]
+do
+    _TREDLY_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+    SOURCE="$(readlink "$SOURCE")"
+
+    # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+    [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+
+_TREDLY_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+
+# check where we're being executed from
+if [[ "${_TREDLY_DIR}" == "/usr/local/sbin" ]]; then
+    # installed location
+
+    # set some useful variables
+    _TREDLY_DIR_LIB="/usr/local/lib/tredly/bash-common"
+    _TREDLY_DIR_COMMANDS="/usr/local/lib/tredly-host/commands"
+    _TREDLY_DIR_CONF="/usr/local/etc/tredly"
+else
+    # non installed location
+
+    # set some useful variables
+    _TREDLY_DIR_LIB="${_TREDLY_DIR}/../tredly-libs/bash-common"
+    _TREDLY_DIR_COMMANDS="${_TREDLY_DIR}/commands"
+    _TREDLY_DIR_CONF="${_TREDLY_DIR}/../tredly/conf"
+fi
+
+# load the libs
+for f in ${_TREDLY_DIR_LIB}/*.sh; do source $f; done
+
+## Ensure debugging is off to start with
+disable_debugging
+
+## Process command line arguments
+for i in "$@"
+do
+    # Key/Value pair (--x=y)
+    if [[ "$i" =~ ^--[^=]+= ]]; then
+        declare local key=${i%%=*}; key=${key:2}
+        _FLAGS["${key}"]="${i#*=}"
+
+    # Help/Usage flag
+    elif [[ "$i" =~ ^(--help|--usage|-h) ]]; then
+        _SHOW_HELP=true
+
+    ## Debug flag
+    elif [[ "$i" =~ ^(--debug|-d) ]]; then
+        enable_debugging
+
+    elif [[ "$i" =~ ^(--verbose) ]]; then
+        _VERBOSE_MODE=true
+
+    ## Version flag
+    elif [[ "$i" =~ ^(--version|-v) ]]; then
+    printf "$(basename "$0") ${_VERSIONNUMBER} (built: ${_VERSIONDATE})\n"; exit
+
+    ## get the first value that isn't a flag and save it as the command
+    elif [[ -z "${_COMMAND}" ]]
+    then
+        _COMMAND="$i"
+
+    ## This will put anything that is not either --x=y, -d, --debug, -h, --usage or --help into a
+    ## seperate array. The conditional part is to keep _COMMAND out also, effectively skipping the
+    ## first parameter.
+    elif [[ ! "${i}" == "${_COMMAND}" ]]
+    then
+        _SUBCOMMANDS=("${_SUBCOMMANDS[@]}" "$i")
+
+    fi
+done
+
+## Display the main help file if necessary
+if [[ -z "${_COMMAND}" ]]; then
+    show_help "${_HELP}"
+fi
+
+## Run the command requested
+if [ -z "${_COMMAND}" ]; then
+    exit_with_error "COMMAND is required."
+
+elif [ ! -e "${_TREDLY_DIR_COMMANDS}/${_COMMAND}" ]; then
+    exit_with_error "Unable to locate specified command."
+fi
+
+if [ ! -e "${_TREDLY_DIR_CONF}/tredly-host.conf" ]; then
+    exit_with_error "Missing tredly-host.conf in ${_TREDLY_DIR_CONF}"
+else
+    # load tredly-host.conf
+    if ! common_conf_parse "tredly-host"; then
+        exit_with_error "There was an unknown error while attempting to load the tredly-host config."
+    fi
+fi
+
+source "${_TREDLY_DIR_COMMANDS}/${_COMMAND}"
+exit 0
