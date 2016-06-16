@@ -2,6 +2,35 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.0.0-rc.1]
+#### Added
+- "tredly config host DNS" command implemented
+- Implemented sigint (ctrl-c) capture during creation and will destroy half created container
+- Added persistent storage for partitions
+- Added persistent storage to list command
+- Commenced work on automated tests (/tests)
+- Added search for "tredly.json" - the v1.0 JSON based tredlyfile
+
+#### Changed
+- Moved all bash libs and python libs to tredly-libs component
+- Updated pathing for non installed scripts
+- Changed Tredly config container subnet header message
+- Standardised pathing for python Tredly modules
+- Cleaned up repo directory structure
+- Tredly-host moved to python. Tredly-host bash functionality moved to tredly command
+- Changed "tredly config api all" to "tredly config api init"
+- Functions which should return a value now return a value
+- Tredlyfile URLs can now have the relevant protocol in the URL (http:// or https://) which is stripped before processing
+
+#### Fixed
+- Tredly-build validation now returns an error message instead of exception
+- Container replace - old container will be renamed back to its original name only if it exists
+- Changed ip4 tredlyfile validation and replaced with regex
+- Updated Tredlyfile schema relating to 'exec_prestart', 'exec_poststart', 'exec_stop' and 'exec_prestop' technical options
+- Casting children.max, 'securelevel' and 'devfs_ruleset' to integers in the 0.10 Tredlyfile parser
+- Updated Tredlyfile schema - Technical options 'securelevel' now has an allowable range of -1 to 3 and 'devfs_ruleset' now allows any integer value.
+- Removed use of ipv4 format validation and replaced with custom pattern as the Python json schema lib does not support the 'format' property.
+
 ## [1.0.0-beta - 2016-06-10]
 #### Added
 - Now importing actions as modules. Allows for "drop in" commands in the same style as the bash tredly-build code

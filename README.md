@@ -1,11 +1,9 @@
 # Tredly
 
-- Version: v1.0.0-beta
-- Date: June 10 2016
+- Version: v1.0.0-rc.1
+- Date: June 16 2016
 - [Release notes](https://github.com/tredly/tredly/blob/master/CHANGELOG.md)
 - [GitHub repository](https://github.com/tredly/tredly)
-
-**\*\* Tredly is currently pre-v1.0 and development is rapidly occurring. This documentation will improve prior to release of v1.0.0-rc.1**
 
 ## Overview
 
@@ -42,12 +40,12 @@ To install Tredly, your server must be running **FreeBSD 10.3 (or above) as Root
 
 ## Configuration
 
-Tredly can be configured in a number of ways, depending on what you are trying to achieve. We recommend you read the wiki article <http://www.tredly.com/docs/?cat=4> to understand the options you can configure in Tredly.
+Tredly can be configured in a number of ways, depending on what you are trying to achieve. We recommend you read the Tredly docs at <http://www.tredly.com/docs/?cat=4> to understand the options you can configure in Tredly.
 
 
 ## Usage
 
-Tredly incorporates a number of commands for manipulating partitions and their containers. To see a full list of these commands, go to the **[Tredly docs website](http://www.tredly.com/docs/?p=9)**
+Tredly incorporates a number of commands for manipulating partitions and their containers. To see a full list of these commands, go to the **[Tredly docs website](http://www.tredly.com/docs/?p=141)**
 
 
 ## Container examples
