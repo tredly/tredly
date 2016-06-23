@@ -21,10 +21,6 @@ function zfs_init() {
         e_verbose "Creating ${ZFS_TREDLY_DOWNLOADS_DATASET}"
         zfs_create_dataset "${ZFS_TREDLY_DOWNLOADS_DATASET}" "${TREDLY_DOWNLOADS_MOUNT}"
     fi
-    if [[ $( zfs list "${ZFS_TREDLY_PERSISTENT_DATASET}" 2> /dev/null | wc -l ) -eq 0 ]]; then
-        e_verbose "Creating ${ZFS_TREDLY_PERSISTENT_DATASET}"
-        zfs_create_dataset "${ZFS_TREDLY_PERSISTENT_DATASET}" "${TREDLY_PERSISTENT_MOUNT}"
-    fi
     if [[ $( zfs list "${ZFS_TREDLY_RELEASES_DATASET}" 2> /dev/null | wc -l ) -eq 0 ]]; then
         e_verbose "Creating ${ZFS_TREDLY_RELEASES_DATASET}"
         zfs_create_dataset "${ZFS_TREDLY_RELEASES_DATASET}" "${TREDLY_RELEASES_MOUNT}"
@@ -42,7 +38,7 @@ function zfs_init() {
 
     # create a default partition under the partitions dataset
     if [[ $( zfs list "${ZFS_TREDLY_PARTITIONS_DATASET}/${TREDLY_DEFAULT_PARTITION}" 2> /dev/null | wc -l ) -eq 0 ]]; then
-        partition_create "${TREDLY_DEFAULT_PARTITION}" "" "" "" "true"
+        partition_create "${TREDLY_DEFAULT_PARTITION}" "" "" "" "" "true"
     fi
 }
 
@@ -172,7 +168,7 @@ function zfs_create_dataset() {
     fi
 
     # create the zfs dataset and mount it
-    zfs create -pu -o mountpoint="${_mountPoint}" "${_dataSet}"
+    /sbin/zfs create -pu -o mountpoint="${_mountPoint}" "${_dataSet}"
     local _createExitCode=$?
 
     if [[ ${_createExitCode} -ne 0 ]]; then
@@ -180,7 +176,7 @@ function zfs_create_dataset() {
     fi
 
     # now mount it
-    zfs mount "${_dataSet}"
+    /sbin/zfs mount "${_dataSet}"
     local _mountExitCode=$?
 
     if [[ ${_mountExitCode} -ne 0 ]]; then

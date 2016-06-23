@@ -148,7 +148,14 @@ class Container:
         if (builtins.tredlyFile.json['container']['resourceLimits']['maxCpu'] == 'unlimited'):
             self.maxCpu = None
         else:
-            self.maxCpu = str(builtins.tredlyFile.json['container']['resourceLimits']['maxCpu'])
+            # handle a percentage
+            if (str(builtins.tredlyFile.json['container']['resourceLimits']['maxCpu']).endswith('%')):
+                maxCpu = builtins.tredlyFile.json['container']['resourceLimits']['maxCpu'].rstrip('%')
+            else:   # handle cores
+                # 1 core == 100% in rctl pcpu
+                maxCpu = int(builtins.tredlyFile.json['container']['resourceLimits']['maxCpu']) * 100
+            
+            self.maxCpu = str(maxCpu)
             
         if (builtins.tredlyFile.json['container']['resourceLimits']['maxRam'] == 'unlimited'):
             self.maxRam = None
@@ -546,8 +553,8 @@ class Container:
             result = True
             for cert in certsToCopy:
                 dest = "/usr/local/etc/nginx/ssl/" + self.partitionName
-                result = result and copyFromContainerOrPartition(cert, dest, self.partitionName)
-                
+                result = result and copyFromContainerOrPartition(cert, dest, self.partitionName, 0o700)
+
                 # print a specific error if it failed
                 if (not result):
                     e_error("Failed to copy certificate " + cert)
@@ -843,6 +850,11 @@ class Container:
                             returnCode = (returnCode and True)
                         except IOError:
                             returnCode = (returnCode and False)
+                            
+                    # check if the directory is now empty, and if so, clean it up
+                    if (len(os.listdir(NGINX_SSL_DIR + '/' + self.partitionName)) == 0):
+                        # delete the directory
+                        shutil.rmtree(NGINX_SSL_DIR + '/' + self.partitionName, ignore_errors=True)
             
             if (returnCode):
                 e_success("Success")
@@ -999,7 +1011,7 @@ class Container:
             bridgeInterface = builtins.tredlyCommonConfig.lif
             
         if (ip4 is None):
-            # get an available ip address for htis network
+            # get an available ip address for this network
             ip4 = getAvailableIP4Address(builtins.tredlyCommonConfig.lifNetwork, builtins.tredlyCommonConfig.lifCIDR)
             
         if (ip4Cidr is None):
@@ -1453,6 +1465,13 @@ class Container:
                 # remove our uuid from this list
                 containersWithUrl.remove(self.uuid)
                 
+                # check if the access file for this container is included in this location block and remove it
+                # copy the list
+                includeItems = list(servernameFile.blocks['server'][0].blocks['location'][urlDirectory].attrs['include'].items())
+                for key, value in includeItems:
+                    if (value == NGINX_ACCESSFILE_DIR + '/' + self.uuid):
+                        del servernameFile.blocks['server'][0].blocks['location'][urlDirectory].attrs['include'][key]
+
                 # if no other containers are using this url then delete the location block
                 if (len(containersWithUrl) == 0):
                     try:
@@ -1468,13 +1487,13 @@ class Container:
                                     del servernameFile.blocks['server'][0]
                             except:
                                 e_warning("Error docs location not found")
-                            
-                        if (not servernameFile.saveFile()):
-                            e_error("Failed to save server name file")
-                        else:
-                            reloadNginx = True
                     except:
                         print('Location ' + urlDirectory + ' not found')
+
+                if (not servernameFile.saveFile()):
+                    e_error("Failed to save server name file")
+                else:
+                    reloadNginx = True
 
                 # remove the redirect urls
                 for redirectUrl in urlObj['redirects']:
@@ -1522,8 +1541,8 @@ class Container:
                             reloadNginx = True
 
         # clean up the access file if it exists
-        if (self.nginxServernameDir is not None):
-            accessFile = self.nginxServernameDir.rstrip('/') + '/' + nginxFormatFilename(self.uuid)
+        if (self.nginxAccessfileDir is not None):
+            accessFile = self.nginxAccessfileDir.rstrip('/') + '/' + nginxFormatFilename(self.uuid)
         
             if (os.path.isfile(accessFile)):
                 os.remove(accessFile)
@@ -1799,52 +1818,56 @@ class Container:
     #
     # Return: True if succeeded, False otherwise
     def applyResourceLimits(self):
-        e_note("Applying resource limits")
         # set max ram
         if (self.maxRam is not None):
+            e_note("Setting maxRam property to " + self.maxRam)
+            
             cmd = ['rctl', '-a', 'jail:trd-' + self.uuid + ":memoryuse:deny=" + self.maxRam]
             process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
             stdOut, stdErr = process.communicate()
-            if (process.returncode != 0):
+            
+            if (process.returncode == 0):
+                e_success()
+            else:
                 e_error("Failed to set maxRam on container " + self.name)
                 return False
-            else:
-                e_warning("maxRam property value was set. Setting to " + self.maxRam)
         else:
-            e_warning("maxRam property value was not set. Defaulting to unlimited.")
+            e_note("Setting maxRam property to unlimited")
+            e_success()
         
         # set max cpu
         if (self.maxCpu is not None):
-            # handle a percentage
-            if (self.maxCpu.endswith('%')):
-                cmd = ['rctl', '-a', 'jail:trd-' + self.uuid + ":pcpu:deny=" + self.maxCpu.rstrip('%')]
-                process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
-                stdOut, stdErr = process.communicate()
-                if (process.returncode != 0):
-                    e_error("Failed to set maxCpu on container " + self.name)
-                    print(cmd)
-                    return False
-                else:
-                    e_warning("maxCpu property value was set. Setting to " + self.maxCpu.rstrip('%') + "%")
+            e_note("Setting maxCpu property to " + self.maxCpu)
+            
+            # assign it
+            cmd = ['rctl', '-a', 'jail:trd-' + self.uuid + ":pcpu:deny=" + str(self.maxCpu)]
+            process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
+            stdOut, stdErr = process.communicate()
+
+            if (process.returncode == 0):
+                e_success()
             else:
-                # TODO: assign cores with 
-                # cpuset -l 0,2 -j 3
-                e_warning("Assigning cores not yet implemented")
-                    
+                e_error("Failed to set maxCpu on container " + self.name)
+                return False
         else:
-            e_warning("maxCpu property value was not set. Defaulting to unlimited.")
+            e_note("Setting maxCpu property to unlimited")
+            e_success()
 
         # set quota on ZFS (maxHdd)
         if (self.maxHdd is not None):
+            e_note("Setting maxHdd property to " + self.maxHdd)
+            
             zfsContainer = ZFSDataset(self.dataset, self.mountPoint)
             
-            if (not zfsContainer.setProperty("quota", self.maxHdd)):
-                e_error("Failed to set maxHdd on container " + self.name)
+            if (zfsContainer.setProperty("quota", self.maxHdd)):
+                e_success()
             else:
-                e_warning("maxHdd property value was set. Setting to " + self.maxHdd)
+                e_error("Failed to set maxHdd on container " + self.name)
+                return False
         else:
-            e_warning("maxHdd property value was not set. Defaulting to unlimited.")
-        
+            e_note("Setting maxHdd property to unlimited")
+            e_success()
+
         return True
     
     # Action: run the oncreate commands within this container
@@ -1933,10 +1956,6 @@ class Container:
                 else:
                     # Success
                     e_success("Success")
-                    
-            elif (createCmd['type'] == 'persistentStorage'):
-                # TODO
-                e_error("Persistent storage yet to be implemented")
             else:
                 e_warning("Unknown command " + createCmd['type'])
     
@@ -1955,6 +1974,7 @@ class Container:
         stdOut, stdErr = process.communicate()
         if (process.returncode != 0):
             # errored
+            print(str(stdOut))
             print(str(stdErr))
             return False
         
@@ -2110,6 +2130,7 @@ class Container:
             urlIncludes.append('/usr/local/etc/nginx/access/ptn_' + nginxFormatFilename(self.partitionName))
         
         for urlObj in self.urls:
+            e_note("Setting up URL " + urlObj['url'])
             # Set some values for http/https
             if (urlObj['cert'] is not None):
                 sslCert = "ssl/" + self.partitionName + "/" + urlObj['cert'].split('/')[-1] + "/server.crt"
@@ -2127,7 +2148,7 @@ class Container:
             else:
                 urlDomain = urlObj['url']
                 urlDirectory = '/'
-                
+            
             # set up the filenames
             servernameFilename = protocol + '-' + nginxFormatFilename(urlDomain.rstrip('/'))
             upstreamFilename = protocol + '-' + nginxFormatFilename(urlObj['url'].rstrip('/'))

@@ -10,7 +10,7 @@
 Tredly is a suite of products to enable developers to spend less time on sysadmin tasks and more time developing. Tredly is a full stack container solution for FreeBSD. It has two main components: Host and Build.
 
 ### Host
-The server technology to run the containers, built on FreeBSD. It contains a number of inbuilt features:
+The server technology used to run the containers, built on FreeBSD. It contains a number of inbuilt features:
 
   * Layer 7 Proxy (HTTP/HTTPS proxy)
   * Layer 4 Proxy (TCP/UDP Proxy)
@@ -18,7 +18,7 @@ The server technology to run the containers, built on FreeBSD. It contains a num
 
 ### Build
 
-Validates and builds containers on a Tredly enabled Host
+Validates and manages containers on a Tredly enabled Host
 
 You can find out more information about Tredly at **<http://www.tredly.com>**
 
@@ -36,7 +36,7 @@ To install Tredly, your server must be running **FreeBSD 10.3 (or above) as Root
     git clone git://github.com/tredly/tredly.git /tmp
     cd /tmp/tredly
 ```
-3. Finally run `./install.sh` to complete install.
+3. Finally run `./install.sh` to install.
 
 ## Configuration
 

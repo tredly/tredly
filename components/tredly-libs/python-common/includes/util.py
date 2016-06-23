@@ -19,16 +19,18 @@ def findTredlyFile(path):
         return None
     
     # look for supported tredly files
-    if (os.path.isfile(path + "/tredly.json")):    # look for tredly.json
-        return(path + "/tredly.json")
+    if (os.path.isfile(path + "/tredly.yaml")):    # look for tredly.yaml
+        return(path + "/tredly.yaml")
     elif (os.path.isfile(path + "/Tredlyfile")):   # look for flat file Tredlyfile
         return(path + "/Tredlyfile")
+    elif (os.path.isfile(path + "/tredly.json")):    # look for tredly.json
+        return(path + "/tredly.json")
     
     return None
 
 # copies files or folders from a given source to destination
 # handles /path/to/folder and partition/path/to/folder for source
-def copyFromContainerOrPartition(src, dest, partitionName):
+def copyFromContainerOrPartition(src, dest, partitionName, chmod = None):
     
     if (re.match('^partition/', src)):  # matches partition
         # create the path to the source file/directory
@@ -52,6 +54,10 @@ def copyFromContainerOrPartition(src, dest, partitionName):
         print(stdErr)
         return False
     else:
+        # check if we need to change the mode 
+        if (chmod is not None):
+            os.chmod(dest, chmod)
+        
         # Success
         return True
 
@@ -131,7 +137,7 @@ def getInterfaceIP4(interface):
         return None
 
     f = os.popen('ifconfig ' + interface + " | awk 'sub(/inet /,\"\"){print $1}'" )
-    return f.read()
+    return f.read().strip()
 
 # formats a filename for nginx
 def nginxFormatFilename(filename):

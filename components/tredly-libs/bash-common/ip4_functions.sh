@@ -478,7 +478,6 @@ function ip4_set_host_network() {
         fi
     fi
 
-
     local _ip4Subnet=$( cidr2netmask "${_ip4CIDR}" )
 
     # set the ip address
@@ -942,7 +941,7 @@ function subtractFromBroadcast() {
     local _numToSubtract="${2}"
 
     # use python to subtract from the subnet
-    python3.5 - <<END
+    /usr/local/bin/python3.5 - <<END
 import ipaddress
 # create an interface object
 interface = ipaddress.IPv4Interface('${_subnet}')

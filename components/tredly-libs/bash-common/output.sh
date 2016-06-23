@@ -66,17 +66,17 @@ function e_header() {
     printf "${_formatReset}${_colourDefault}\n"
 }
 function e_arrow() {
-    printf "➜ $@\n"
+    printf "$@\n"
 }
 function e_error() {
-    printf "${_colourRed}✖ Error: %s${_formatReset}${_colourDefault}\n" "$@"
+    printf "${_colourRed}Error: %s${_formatReset}${_colourDefault}\n" "$@"
 }
 function e_stderr() {
     >&2 echo "$@"
 }
 
 function e_warning() {
-    printf "${_colourYellow}➜ %s${_formatReset}${_colourDefault}\n" "$@"
+    printf "${_colourYellow}%s${_formatReset}${_colourDefault}\n" "$@"
 }
 function e_underline() {
     printf "${_formatUnderline}${_formatBold}%s${_formatReset}${_colourDefault}\n" "$@"
@@ -89,7 +89,7 @@ function e_bold() {
 }
 
 function e_success() {
-    printf "${_colourGreen}✔ %s${_formatReset}${_colourDefault}\n" "$@"
+    printf "${_colourGreen}%s${_formatReset}${_colourDefault}\n" "$@"
 }
 
 function e_verbose() {

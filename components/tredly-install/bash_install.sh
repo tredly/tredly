@@ -1,5 +1,8 @@
 #!/usr/local/bin/bash
 
+# set this to true to stop after every command is issued so that output can be observed
+_TREDLYINSTALLDEBUG="false"
+
 # set some bash error handlers
 #set -u              # exit when attempting to use an undeclared variable
 set -o pipefail     # exit when piped commands fail
@@ -82,6 +85,27 @@ else
     _configOptions[7]="${_CONF_COMMON[commandCenterURL]}"
 fi
 
+# Root user password
+if [[ -z "${_CONF_COMMON[rootUserPassword]}" ]]; then
+    _configOptions[8]="tredly"
+else
+    _configOptions[8]="${_CONF_COMMON[rootUserPassword]}"
+fi
+
+# Tredly user password
+if [[ -z "${_CONF_COMMON[tredlyUserPassword]}" ]]; then
+    _configOptions[9]="tredly"
+else
+    _configOptions[9]="${_CONF_COMMON[tredlyUserPassword]}"
+fi
+
+# Tredly API password
+if [[ -z "${_CONF_COMMON[tredlyApiPassword]}" ]]; then
+    _configOptions[10]="tredly"
+else
+    _configOptions[10]="${_CONF_COMMON[tredlyApiPassword]}"
+fi
+
 # check for a dhcp leases file for this interface
 #if [[ -f "/var/db/dhclient.leases.${_configOptions[1]}" ]]; then
     # look for its current ip address within the leases file
@@ -112,6 +136,30 @@ _hostPrivateIP=$( get_last_usable_ip4_in_network "${CONTAINER_SUBNET_NET}" "${CO
 e_header "Tredly Installation"
 
 ##########
+e_note "Configuring users"
+_exitCode=0
+# set root password
+echo "${_configOptions[8]}" | /usr/sbin/pw usermod root -h 0
+_exitCode=$(( ${_exitCode} & $? ))
+# set root to use bash shell
+/usr/sbin/pw usermod root -s /usr/local/bin/bash
+_exitCode=$(( ${_exitCode} & $? ))
+
+# set up tredly user and password with bash shell
+echo "${_configOptions[8]}" | /usr/sbin/pw useradd -n tredly -s /usr/local/bin/bash -m -h 0
+_exitCode=$(( ${_exitCode} & $? ))
+
+# add tredly user to wheel group for su access
+pw groupmod wheel -m tredly
+_exitCode=$(( ${_exitCode} & $? ))
+
+if [[ $? -eq 0 ]]; then
+    e_success "Success"
+else
+    e_error "Failed"
+fi
+
+##########
 
 # Configure /etc/rc.conf
 e_note "Configuring /etc/rc.conf"
@@ -121,7 +169,7 @@ if [[ -f "/etc/rc.conf" ]]; then
     mv /etc/rc.conf /etc/rc.conf.old
 fi
 _exitCode=$(( ${_exitCode} & $? ))
-cp ${_DIR}/os/rc.conf /etc/
+cp ${_DIR}/os/etc/rc.conf /etc/
 _exitCode=$(( ${_exitCode} & $? ))
 # change the network information in rc.conf
 sed -i '' "s|ifconfig_bridge0=.*|ifconfig_bridge0=\"addm ${_configOptions[1]} up\"|g" "/etc/rc.conf"
@@ -132,6 +180,9 @@ else
     e_error "Failed"
 fi
 
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
 ##########
 
 # if vimage is installed, enable cloned interfaces
@@ -145,12 +196,24 @@ if [[ ${_vimageInstalled} -ne 0 ]]; then
     fi
 fi
 
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
 ##########
-
+_exitCode=0
 # Update FreeBSD and install updates
 e_note "Fetching and Installing FreeBSD Updates"
+# install our custom freebsd update that prevents kernel updates
+if [[ -f "/usr/local/etc/pkg.conf" ]]; then
+    mv /etc/freebsd-update.conf /etc/freebsd-update.conf.old
+fi
+cp ${_DIR}/os/etc/freebsd-update.conf /etc/
+_exitCode=$(( ${_exitCode} & $? ))
+
 freebsd-update fetch install | tee -a "${_LOGFILE}"
-if [[ ${PIPESTATUS[0]} -eq 0 ]]; then
+_exitCode=$(( ${PIPESTATUS[0]} & ${_exitCode} ))
+
+if [[ ${_exitCode} -eq 0 ]]; then
     e_success "Success"
 else
     e_error "Failed"
@@ -163,18 +226,26 @@ e_note "Configuring PKG"
 if [[ -f "/usr/local/etc/pkg.conf" ]]; then
     mv /usr/local/etc/pkg.conf /usr/local/etc/pkg.conf.old
 fi
-cp ${_DIR}/os/pkg.conf /usr/local/etc/
+cp ${_DIR}/os/usr/local/etc/pkg.conf /usr/local/etc/
 if [[ $? -eq 0 ]]; then
     e_success "Success"
 else
     e_error "Failed"
 fi
 
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
 ##########
 
 # Install Packages
 e_note "Installing Packages"
 _exitCode=0
+pkg install -y ca_root_nss | tee -a "${_LOGFILE}"
+_exitCode=$(( ${PIPESTATUS[0]} & $? ))
+if [[ ${_exitCode} -ne 0 ]]; then
+    exit_with_error "Failed to download ca_root_nss"
+fi
 pkg install -y vim-lite | tee -a "${_LOGFILE}"
 _exitCode=$(( ${PIPESTATUS[0]} & $? ))
 if [[ ${_exitCode} -ne 0 ]]; then
@@ -222,6 +293,9 @@ else
     e_error "Failed"
 fi
 
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
 ##########
 
 # check if user wanted to enable SSHD or not
@@ -236,7 +310,7 @@ if [[ $( str_to_lower "${_CONF_COMMON[enableSSHD]}") == 'yes' ]]; then
         _exitCode=$(( ${_exitCode} & $? ))
     fi
     
-    cp ${_DIR}/os/sshd_config /etc/ssh/sshd_config
+    cp ${_DIR}/os/etc/ssh/sshd_config /etc/ssh/sshd_config
     _exitCode=$(( ${_exitCode} & $? ))
     
     # change the networking data for ssh
@@ -256,17 +330,23 @@ else
     e_note "Skipping configuration of SSHD"
 fi
 
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
 ##########
 
 # Configure Vim
 e_note "Configuring VIM"
-cp ${_DIR}/os/vimrc /usr/local/share/vim/vimrc
+cp ${_DIR}/os/usr/local/share/vimrc /usr/local/share/vim/vimrc
 if [[ $? -eq 0 ]]; then
     e_success "Success"
 else
     e_error "Failed"
 fi
 
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
 ##########
 
 # Configure IPFW
@@ -274,11 +354,11 @@ e_note "Configuring IPFW"
 _exitCode=0
 mkdir -p /usr/local/etc
 _exitCode=$(( ${_exitCode} & $? ))
-cp ${_DIR}/os/ipfw.rules /usr/local/etc/ipfw.rules
+cp ${_DIR}/os/usr/local/etc/ipfw.rules /usr/local/etc/ipfw.rules
 _exitCode=$(( ${_exitCode} & $? ))
-cp ${_DIR}/os/ipfw.layer4 /usr/local/etc/ipfw.layer4
+cp ${_DIR}/os/usr/local/etc/ipfw.layer4 /usr/local/etc/ipfw.layer4
 _exitCode=$(( ${_exitCode} & $? ))
-cp ${_DIR}/os/ipfw.vars /usr/local/etc/ipfw.vars
+cp ${_DIR}/os/usr/local/etc/ipfw.vars /usr/local/etc/ipfw.vars
 _exitCode=$(( ${_exitCode} & $? ))
 
 # Removed ipfw start for now due to its ability to disconnect a user from their host
@@ -288,6 +368,10 @@ if [[ ${_exitCode} -eq 0 ]]; then
     e_success "Success"
 else
     e_error "Failed"
+fi
+
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
 fi
 
 ##########
@@ -303,6 +387,9 @@ else
     e_error "Failed"
 fi
 
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
 ##########
 
 # Configure OpenNTP
@@ -311,7 +398,7 @@ e_note "Configuring OpenNTP"
 if [[ -f "/usr/local/etc/ntpd.conf" ]]; then
     mv /usr/local/etc/ntpd.conf /usr/local/etc/ntpd.conf.old
 fi
-cp ${_DIR}/os/ntpd.conf /usr/local/etc/
+cp ${_DIR}/os/usr/local/etc/ntpd.conf /usr/local/etc/
 _exitCode=$(( ${_exitCode} & $? ))
 if [[ ${_exitCode} -eq 0 ]]; then
     e_success "Success"
@@ -319,6 +406,9 @@ else
     e_error "Failed"
 fi
 
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
 ##########
 
 # Configure zfs scrubbing
@@ -333,7 +423,7 @@ _exitCode=0
 if [[ -f "/boot/loader.conf" ]]; then
     mv /boot/loader.conf /boot/loader.conf.old
 fi
-cp ${_DIR}/os/loader.conf /boot/
+cp ${_DIR}/os/boot/loader.conf /boot/
 if [[ $? -eq 0 ]]; then
     e_success "Success"
 else
@@ -345,16 +435,19 @@ e_note "Configuring Sysctl"
 if [[ -f "/etc/sysctl.conf" ]]; then
     mv /etc/sysctl.conf /etc/sysctl.conf.old
 fi
-cp ${_DIR}/os/sysctl.conf /etc/
+cp ${_DIR}/os/etc/sysctl.conf /etc/
 if [[ $? -eq 0 ]]; then
     e_success "Success"
 else
     e_error "Failed"
 fi
 
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
 ##########
 
-# Configure fstab to fix bash bug
+# Configure fstab for bash
 if [[ $( grep /dev/fd /etc/fstab | wc -l ) -eq 0 ]]; then
     e_note "Configuring Bash"
     echo "fdesc                   /dev/fd fdescfs rw              0       0" >> /etc/fstab
@@ -363,10 +456,11 @@ if [[ $( grep /dev/fd /etc/fstab | wc -l ) -eq 0 ]]; then
     else
         e_error "Failed"
     fi
-else
-   e_note "Bash already configured"
 fi
 
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
 ##########
 
 # Configure HTTP Proxy
@@ -394,6 +488,9 @@ else
     e_error "Failed"
 fi
 
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
 ##########
 
 # Configure Unbound DNS
@@ -409,14 +506,19 @@ else
     e_error "Failed"
 fi
 
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
 ##########
 _exitCode=0
 e_note "Configuring Python"
 # install pip
-python3.5 -m ensurepip
+/usr/local/bin/python3.5 -m ensurepip
 _exitCode=$(( ${PIPESTATUS[0]} & $? ))
-# install jsonschema
-pip3 install jsonschema
+# install python libraries
+/usr/local/bin/pip3 install jsonschema
+_exitCode=$(( ${PIPESTATUS[0]} & $? ))
+/usr/local/bin/pip3 install pyyaml
 _exitCode=$(( ${PIPESTATUS[0]} & $? ))
 
 if [[ ${_exitCode} -eq 0 ]]; then
@@ -425,6 +527,9 @@ else
     e_error "Failed"
 fi
 
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
 ##########
 
 # install tredly common libs
@@ -440,6 +545,9 @@ else
     e_error "Failed"
 fi
 
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
 ##########
 e_note "Installing Tredly-Core"
 
@@ -451,6 +559,9 @@ else
     e_error "Failed"
 fi
 
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
 ##########
 e_note "Installing Tredly-Host"
 
@@ -462,6 +573,9 @@ else
     e_error "Failed"
 fi
 
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
 ##########
 
 # Install tredly-build
@@ -474,13 +588,28 @@ else
     e_error "Failed"
 fi
 
-# initialise tredly
-tredly init
+_filesLocation=''
+# if we're installing from the ISO then use the ISO files
+if [[ "${TREDLYISOINSTALLER}" == "true" ]]; then
+    _filesLocation="/usr/freebsd-dist"
+fi
 
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
+
+# initialise tredly
+/usr/local/sbin/tredly init
+
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
 ##########
 
 # if the user wanted to install the api then go ahead
 if [[ $( str_to_lower "${_CONF_COMMON[enableAPI]}") == 'yes' ]]; then
+    # set the path for nodejs
+    export PATH="${PATH}:/usr/local/bin"
     # set up tredly api
     e_note "Configuring Tredly-API"
     _exitCode=1
@@ -490,16 +619,17 @@ if [[ $( str_to_lower "${_CONF_COMMON[enableAPI]}") == 'yes' ]]; then
         echo "Cleaning previously downloaded Tredly-API"
         rm -rf /tmp/tredly-api
     fi
-
+    
     while [[ ${_exitCode} -ne 0 ]]; do
-        git clone -b "${_CONF_COMMON[tredlyApiBranch]}" "${_CONF_COMMON[tredlyApiGit]}"
+        /usr/local/bin/git clone -b "${_CONF_COMMON[tredlyApiBranch]}" "${_CONF_COMMON[tredlyApiGit]}"
         _exitCode=$?
     done
-
+    
     cd /tmp/tredly-api
     
     # install the API and extract the random password so we can present this to the user at the end of install
-    apiPassword="$( ./install.sh | grep "^Your API password is: " | cut -d':' -f 2 | sed -e 's/^[ \t]*//' )"
+    echo "${_configOptions[10]}" | ./install.sh
+    #apiPassword="$( ./install.sh | grep "^Your API password is: " | cut -d':' -f 2 | sed -e 's/^[ \t]*//' )"
     
     if [[ ${PIPESTATUS[0]} -eq 0 ]]; then
         e_success "Success"
@@ -510,6 +640,10 @@ else
     e_note "Skipping Tredly-API Installation"
 fi
 
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    echo "${PATH}"
+    read -p "press any key to continue" confirm
+fi
 ##########
 
 # install command center if user requested it
@@ -524,7 +658,7 @@ if [[ $( str_to_lower "${_CONF_COMMON[enableCommandCenter]}") == 'yes' ]]; then
     fi
 
     while [[ ${_exitCode} -ne 0 ]]; do
-        git clone -b "${_CONF_COMMON[tredlyCCBranch]}" "${_CONF_COMMON[tredlyCCGit]}"
+        /usr/local/bin/git clone -b "${_CONF_COMMON[tredlyCCBranch]}" "${_CONF_COMMON[tredlyCCGit]}"
         _exitCode=$?
     done
 
@@ -542,6 +676,9 @@ else
     e_note "Skipping Tredly Command Center Installation"
 fi
 
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
 ##########
 
 # Setup crontab
@@ -549,7 +686,7 @@ e_note "Configuring Crontab"
 _exitCode=0
 mkdir -p /usr/local/host/
 _exitCode=$(( ${_exitCode} & $? ))
-cp ${_DIR}/os/crontab /usr/local/host/
+cp ${_DIR}/os/usr/local/host/crontab /usr/local/host/
 _exitCode=$(( ${_exitCode} & $? ))
 crontab /usr/local/host/crontab
 _exitCode=$(( ${_exitCode} & $? ))
@@ -559,7 +696,7 @@ else
     e_error "Failed"
 fi
 
-if [[ ${_vimageInstalled} -ne 0 ]]; then
+if [[ ${_vimageInstalled} -ne 0 ]] || [[ "${TREDLYISOINSTALLER}" == "true" ]]; then
     e_success "Skipping kernel recompile as this kernel appears to already have VIMAGE compiled."
 else
     e_note "Recompiling kernel as this kernel does not have VIMAGE built in"
@@ -636,7 +773,7 @@ else
         _useCpus=1
     fi
 
-    e_note "Compiling kernel using ${_useCpus} CPUs..."
+    e_note "Compiling kernel using 80% of available CPU resources (${_useCpus} CPUs)"
     e_note "This may take some time..."
     make -j${_useCpus} buildkernel KERNCONF=TREDLY >> "${_KERNELCOMPILELOG}"
 
@@ -658,28 +795,37 @@ if [[ -f "/tmp/src.txz" ]]; then
     rm -f /tmp/src.txz
 fi
 
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
 ##########
 
 # use tredly to set network details
-tredly config host network "${_configOptions[1]}" "${_configOptions[2]}" "${_configOptions[3]}"
-
-tredly config host hostname "${_configOptions[4]}"
-
-tredly config container subnet "${_configOptions[5]}"
-
+/usr/local/sbin/tredly config host network "${_configOptions[1]}" "${_configOptions[2]}" "${_configOptions[3]}"
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
+/usr/local/sbin/tredly config host hostname "${_configOptions[4]}"
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
+/usr/local/sbin/tredly config container subnet "${_configOptions[5]}"
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
 
 # if whitelist was given to us then set it up
 if [[ -n "${_CONF_COMMON[apiWhitelist]}" ]]; then
     e_note "Whitelisting IP addresses for API"
     # clear the whitelist in case of old entries
-    tredly config api whitelist clear > /dev/null
+    /usr/local/sbin/tredly config api whitelist clear > /dev/null
     
     declare -a _whitelistArray
     IFS=',' read -ra _whitelistArray <<< "${_CONF_COMMON[apiWhitelist]}"
     
     _exitCode=0
     for ip in ${_whitelistArray[@]}; do
-        tredly config api whitelist "${ip}" > /dev/null
+        /usr/local/sbin/tredly config api whitelist "${ip}" > /dev/null
         _exitCode=$(( ${_exitCode} & $? ))
     done
     
@@ -692,18 +838,21 @@ fi
 
 # echo out confirmation message to user
 e_header "Install Complete"
-echo -e "${_colourOrange}${_formatBold}"
-echo "**************************************"
-echo "Your API Password is: ${apiPassword}"
-echo -e "**************************************${_formatReset}"
+if [[ -n "${apiPassword}" ]]; then
+    echo -e "${_colourOrange}${_formatBold}"
+    echo "**************************************"
+    echo "Your API Password is: ${apiPassword}"
+    echo "Please make note of this password so that you may access the API"
+    echo "To change this password, please run the command 'tredly config api password'"
+    echo "To whitelist addresses to access the API, please run the command 'tredly config api whitelist <ipaddr1>,<ipaddr2>'"
+    echo ""
+    echo -e "**************************************${_formatReset}"
+fi
 echo -e "${_colourMagenta}"
-echo "Please make note of this password so that you may access the API"
-echo ""
-echo "To change this password, please run the command 'tredly config api password'"
-echo "To whitelist addresses to access the API, please run the command 'tredly config api whitelist <ipaddr1>,<ipaddr2>'"
-echo ""
 echo -e "Please ${_formatBold}REBOOT${_formatReset}${_colourMagenta} your host for the new kernel and settings to take effect."
 echo ""
 echo "Please note that the SSH port has changed. Please use the following command to connect to your host after reboot:"
 echo "ssh -p 65222 tredly@$( lcut "${_configOptions[2]}" "/" )"
 echo -e "${_formatReset}"
+
+exit 0

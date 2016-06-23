@@ -7,6 +7,7 @@ function partition_create() {
     local _partitionHDD="${2}"
     local _partitionCPU="${3}"
     local _partitionRAM="${4}"
+    local _partitionIp4Whitelist="${5}"
     local _silent="${5}"
 
     local _exitCode
@@ -31,8 +32,9 @@ function partition_create() {
         fi
     fi
     if [[ -n "${_partitionCPU}" ]]; then
-        if ! is_int "${_partitionCPU}"; then
-            exit_with_error "Invalid CPU specification: ${_partitionCPU}. Please use the format CPU=<int>, eg CPU=1"
+        # make sure it was an int or included a percentage
+        if ! is_int "${_partitionCPU}" && [[ "${_partitionCPU: -1}" != '%' ]]; then
+            exit_with_error "Invalid CPU specification: ${_partitionCPU}. Please use the format CPU=<int> or CPU=<int>%, eg CPU=1"
         fi
     fi
     if [[ -n "${_partitionRAM}" ]]; then
@@ -109,6 +111,12 @@ function partition_create() {
         if [[ "${_silent}" != "true" ]]; then
             e_note "Applying CPU value ${_partitionCPU}"
         fi
+        
+        # check if it was a percentage
+        if [[ "${_partitionCPU: -1}" != '%' ]]; then
+            _partitionCPU=$( rtrim "${_partitionCPU}" "%" )
+            _partitionCPU=$(( _partitionCPU * 100 ))
+        fi
 
         zfs_set_property "${ZFS_TREDLY_PARTITIONS_DATASET}/${_partitionName}" "${ZFS_PROP_ROOT}:maxcpu" "${_partitionCPU}"
         _exitCode=$?
@@ -140,6 +148,36 @@ function partition_create() {
         fi
     fi
 
+    # apply ip4 whitelisting
+    if [[ -n "${_partitionIp4Whitelist}" ]]; then
+        local _partitionDataset="${ZFS_TREDLY_PARTITIONS_DATASET}/${_partitionName}"
+
+        if [[ "${_silent}" != "true" ]]; then
+            e_note "Applying whitelist."
+        fi
+        
+        # convert the whitelist into an array to pass
+        local -a _whitelistArray
+        IFS=',' read -ra _whitelistArray <<< "${_partitionIp4Whitelist}"
+
+        # Set the whitelist
+        if partition_ipv4whitelist_create _whitelistArray[@] "${_partitionName}"; then
+            # apply whitelist to partition members
+            if ipfw_container_update_partition_members "${_partitionName}"; then
+                if [[ "${_silent}" != "true" ]]; then
+                    e_success "Success"
+                fi
+            else
+                if [[ "${_silent}" != "true" ]]; then
+                    e_error "Failed"
+                fi
+            fi
+        else
+            if [[ "${_silent}" != "true" ]]; then
+                e_error "Failed"
+            fi
+        fi
+    fi
 }
 
 # Modifies partition parameters
@@ -188,8 +226,9 @@ function partition_modify() {
         fi
     fi
     if [[ -n "${_newPartitionCPU}" ]]; then
-        if ! is_int "${_newPartitionCPU}"; then
-            exit_with_error "Invalid CPU specification: ${_newPartitionCPU}. Please use the format CPU=<int>, eg CPU=1"
+        # make sure it was an int or included a percentage
+        if ! is_int "${_newPartitionCPU}" && [[ "${_newPartitionCPU: -1}" != '%' ]]; then
+            exit_with_error "Invalid CPU specification: ${_partitionCPU}. Please use the format CPU=<int> or CPU=<int>%, eg CPU=1"
         fi
     fi
     if [[ -n "${_newPartitionRAM}" ]]; then
@@ -261,7 +300,7 @@ function partition_modify() {
 
         local _partitionDataset="${ZFS_TREDLY_PARTITIONS_DATASET}/${_partitionName}"
 
-        zfs_set_property "${_newDataset}" "quota" "${_partitionDataset}"
+        zfs_set_property "${_partitionDataset}" "quota" "${_newPartitionHDD}"
 
         if [[ $? -eq 0 ]]; then
             e_success "Success"
@@ -273,6 +312,12 @@ function partition_modify() {
     # apply CPU restrictions
     if [[ -n "${_newPartitionCPU}" ]]; then
         e_note "Applying CPU value ${_newPartitionCPU}"
+
+        # check if it was a percentage
+        if [[ "${_newPartitionCPU: -1}" != '%' ]]; then
+            _newPartitionCPU=$( rtrim "${_newPartitionCPU}" "%" )
+            _newPartitionCPU=$(( _partitionCPU * 100 ))
+        fi
 
         local _partitionDataset="${ZFS_TREDLY_PARTITIONS_DATASET}/${_partitionName}"
 
@@ -370,10 +415,12 @@ function partition_destroy() {
     # now destroy the dataset
     zfs destroy -rf "${ZFS_TREDLY_PARTITIONS_DATASET}/${_partitionName}"
 
-    # remove the dir
-    #rmdir "${TREDLY_PARTITIONS_MOUNT}/${_partitionName}" 2> /dev/null
+    local _exitCode=$?
+    
+    # re-init the zfs datasets 
+    zfs_init
 
-    if [[ $? -eq 0 ]]; then
+    if [[ ${_exitCode} -eq 0 ]]; then
         e_success "Success"
     else
         e_error "Failed"
@@ -600,7 +647,7 @@ function partition_ipv4whitelist_create() {
         if is_valid_ip4 "${_ip4}"; then
             _ip4whitelistValidated+=("${_ip4}")
 
-            e_note "${ip4}"
+            e_note "${_ip4}"
             # add it in to the zfs property list registry
             zfs_append_custom_array "${_partitionDataset}" "${ZFS_PROP_ROOT}.ptn_ip4whitelist" "${_ip4}"
         fi

@@ -12,8 +12,7 @@
                         443
                     ],
                     "in": [
-                        80,
-                        443
+                        4443
                     ]
                 },
                 "udp": {
@@ -41,18 +40,8 @@
             "maxHdd": "1024M"
         },
         "proxy": {
-            "layer7Proxy": [
-                {
-                    "enableWebsocket": true,
-                    "redirects": [{"url": "http://www.http-redirect.com", "cert": null},
-                                  {"url": "https://www.https-redirect.com", "cert": "partition/sslCerts/selfsigned"}
-                    ],
-                    "cert": "partition/sslCerts/selfsigned",
-                    "url": "https://www.tredly-test.com",
-                    "maxFileSize": "10m"
-                }
-            ],
-            "layer4Proxy": false
+            "layer7Proxy": [],
+            "layer4Proxy": true
         },
         "replicate": false,
         "operations": {

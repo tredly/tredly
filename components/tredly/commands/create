@@ -51,12 +51,12 @@ case "${_SUBCOMMANDS[0]}" in
         _partition_ram=''
 
         # ensure we received right number of args
-        if [[ ${#_SUBCOMMANDS[@]} -gt 5 ]]; then
+        if [[ ${#_SUBCOMMANDS[@]} -gt 6 ]]; then
             exit_with_error "Too many arguments received."
         fi
 
         # loop over the args received, populating the variables
-        for i in {2..4}; do
+        for i in {2..5}; do
             key="${_SUBCOMMANDS[${i}]%%=*}"
             value="${_SUBCOMMANDS[${i}]#*=}"
 
@@ -71,6 +71,10 @@ case "${_SUBCOMMANDS[0]}" in
                 RAM)
                     _partition_ram="${value}"
                 ;;
+                ipv4Whitelist)
+                    echo "${value}"
+                    _partition_ip4whitelist="${value}"
+                ;;
                 *)
                     if [[ -n "${key}" ]]; then
                         exit_with_error "Invalid option \"${key}\""
@@ -80,7 +84,7 @@ case "${_SUBCOMMANDS[0]}" in
         done
 
         # create the partition
-        partition_create "${_SUBCOMMANDS[1]}" "${_partition_hdd}" "${_partition_cpu}" "${_partition_ram}"
+        partition_create "${_SUBCOMMANDS[1]}" "${_partition_hdd}" "${_partition_cpu}" "${_partition_ram}" "${_partition_ip4whitelist}"
 
     ;;
     *)

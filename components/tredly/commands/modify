@@ -98,7 +98,7 @@ case "${_SUBCOMMANDS[0]}" in
         _partition_ip4whitelist=''
 
         # ensure we received right number of args
-        if [[ ${#_SUBCOMMANDS[@]} -gt 6 ]]; then
+        if [[ ${#_SUBCOMMANDS[@]} -gt 7 ]]; then
             exit_with_error "Too many arguments received."
         fi
 

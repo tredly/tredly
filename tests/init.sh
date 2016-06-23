@@ -9,3 +9,4 @@ openssl req -new -key server.key -out server.csr -passin pass:tredly -subj "/C=A
 cp server.key server.key.org
 openssl rsa -in server.key.org -out server.key -passin pass:tredly
 openssl x509 -req -days 3650 -in server.csr -signkey server.key -out server.crt -passin pass:tredly
+pkg install nmap

@@ -2,6 +2,9 @@
 
 # sets up the environment for tredly
 function init_environment() {
+    # can be a local path or URL
+    local _filesLocation="${1}"
+    
     e_header "Setting up the Tredly environment..."
 
     # initialise zfs
@@ -40,6 +43,14 @@ function init_environment() {
         # we only have 1 so use it by default
         _release="${RELEASES_SUPPORTED[0]}"
     fi
+    
+    # if files location wasnt set then set to FreeBSD URL
+    if [[ -z "${_filesLocation}" ]]; then
+        _filesLocation="https://download.freebsd.org/ftp/releases/amd64/${_release}"
+    else 
+        # trim the trailing slash
+        _filesLocation=$( rtrim "${_filesLocation}" '/' )
+    fi
 
     # set up the zfs directories/datasets
     zfs_create_dataset "${ZFS_TREDLY_DOWNLOADS_DATASET}/${_release}" "${TREDLY_DOWNLOADS_MOUNT}/${_release}"
@@ -56,7 +67,7 @@ function init_environment() {
     _filesToDownload+=('src.txz')
 
     # fetch the manifest first so we can validate the files as we go along
-    fetch https://download.freebsd.org/ftp/releases/amd64/${_release}/MANIFEST
+    fetch ${_filesLocation}/MANIFEST
 
     local _file
     # fetch the files
@@ -72,7 +83,7 @@ function init_environment() {
         fi
 
         if [[ "${_download}" == "true" ]]; then
-            fetch https://download.freebsd.org/ftp/releases/amd64/${_release}/${_file}
+            fetch ${_filesLocation}/${_file}
             if [ $? -ne 0 ]; then
                 exit_with_error "Failed to download file"
             fi

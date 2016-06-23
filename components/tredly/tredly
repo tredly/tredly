@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/local/bin/bash
 
 # an array to contain PIDs of any forked processes for cleanup
 declare -a _CHILDPIDS

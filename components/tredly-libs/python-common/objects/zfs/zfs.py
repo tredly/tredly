@@ -308,7 +308,7 @@ class ZFSDataset:
     def getArray(self, property):
         # the following commands are piped together
         zfsCmd = ['zfs', 'get', '-H', '-o', 'property,value', 'all', self.dataset]
-        grepCmd = ['grep', '-F', property + ':']
+        grepCmd = ['grep', '^' + property + ':']
         sedCmd = ['sed', 's/^' + property + '://']
         sortCmd = ['sort', '-k', '1', '-n']
         

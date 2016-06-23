@@ -98,10 +98,13 @@ class ActionReplace:
             oldContainerUUID = tredlyHost.getUUIDFromContainerName(partitionName, newContainerName)
         else:
             oldContainerUUID = uuidToReplace
+            
+        startReplaceEpoch = int(time.time())
         
         # check if old container exists or not
         if (not tredlyHost.containerExists(oldContainerUUID, partitionName)):
             e_header("Replacing Container " + newContainerName)
+            e_note("Replace started at " + time.strftime('%Y-%m-%d %H:%M:%S %z', time.localtime(startReplaceEpoch)))
             e_note("Container to replace does not exist")
         else:
             # get the old container name
@@ -109,16 +112,11 @@ class ActionReplace:
             zfsOldContainer = ZFSDataset(oldContainerDataset)
             oldContainerName = zfsOldContainer.getProperty(ZFS_PROP_ROOT + ':containername')
             e_header("Replacing Container " + oldContainerName + " with " + newContainerName)
+            e_note("Replace started at " + time.strftime('%Y-%m-%d %H:%M:%S %z', time.localtime(startReplaceEpoch)))
         
-            # change the name of the old container
-            if (not zfsOldContainer.setProperty(ZFS_PROP_ROOT + ':containername', oldContainerName + '-REPLACING')):
-                e_error("Failed to rename old container")
-            
+            # change the state of the old container to "replacing"
             if (not zfsOldContainer.setProperty(ZFS_PROP_ROOT + ':containerstate', 'replacing')):
                 e_error("Failed to set container state")
-            
-        startReplaceEpoch = int(time.time())
-        e_note("Replace started at " + time.strftime('%Y-%m-%d %H:%M:%S %z', time.localtime(startReplaceEpoch)))
         
         zfsTredly = ZFSDataset(ZFS_TREDLY_DATASET)
         defaultRelease = zfsTredly.getProperty(ZFS_PROP_ROOT + ':default_release_name')
@@ -133,7 +131,7 @@ class ActionReplace:
         # set the correct container name if it was passed to us
         if (containerName is not None):
             newContainer.name = containerName
-    
+        
         e_header("Creating Container - " + newContainer.name + ' in partition ' + newContainer.partitionName)
         
         # capture the sigint handler
@@ -148,9 +146,7 @@ class ActionReplace:
             
             # if the old container exists then rename it and unset its state
             if (tredlyHost.containerExists(oldContainerUUID, partitionName)):
-                # set the original containers name back to what it was before replace
-                zfsOldContainer.setProperty(ZFS_PROP_ROOT + ':containername', oldContainerName)
-                # and remove the replacing state
+                # remove the replacing state so that it goes back to UP
                 zfsOldContainer.unsetProperty(ZFS_PROP_ROOT + ':containerstate')
 
             # http://www.tldp.org/LDP/abs/html/exitcodes.html
@@ -163,11 +159,6 @@ class ActionReplace:
         if (not newContainer.create()):
             # container create failed so rename the old container back
             e_error("Failed to create new container")
-            
-            # change the name back if the old container exists
-            if (tredlyHost.containerExists(oldContainerUUID, partitionName)):
-                # set the name back 
-                zfsOldContainer.setProperty(ZFS_PROP_ROOT + ':containername', oldContainerName)
             
             exit(1)
         

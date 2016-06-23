@@ -116,15 +116,6 @@ class Layer7Proxy:
         servername.server[0].attrs['server_name'][0] = urlDomain
         servername.server[0].attrs['listen'][0] = builtins.tredlyCommonConfig.httpProxyIP + ":" + port
 
-        # add any includes that we received
-        if (includes is not None):
-            for include in includes:
-                servername.server[0].addAttr('include', include)
-        else:
-            # remove the includes
-            if ('include' in servername.server[0].attrs.keys()):
-                del servername.server[0].attrs['include']
-
         # add the location block
         try:
             servername.server[0].location[urlDirectory]
@@ -132,11 +123,20 @@ class Layer7Proxy:
             # not defined, so define it
             servername.server[0].addBlock('location', urlDirectory)
         
+        # add any includes that we received
+        if (includes is not None):
+            for include in includes:
+                servername.server[0].location[urlDirectory].addAttr('include', include)
+        else:
+            # remove the includes
+            if ('include' in servername.server[0].location[urlDirectory].attrs.keys()):
+                del servername.server[0].location[urlDirectory].attrs['include']
+        
         # include websockets if requested, otherwise include http/https include file
         if (websocket):
-            servername.server[0].location[urlDirectory].attrs['include'][0] = 'proxy_pass/ws_wss'
+            servername.server[0].location[urlDirectory].addAttr('include', 'proxy_pass/ws_wss')
         else:
-            servername.server[0].location[urlDirectory].attrs['include'][0] = 'proxy_pass/http_https'
+            servername.server[0].location[urlDirectory].addAttr('include', 'proxy_pass/http_https')
         
         # add maxfilesize if requested
         if (maxFileSize is not None):

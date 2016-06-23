@@ -1,0 +1,117 @@
+export ZFSBOOT_DISKS=ada0
+export ZFSBOOT_DATASETS="
+    # DATASET           OPTIONS (comma or space separated; or both)
+
+    # Boot Environment [BE] root and default boot dataset
+    /ROOT               mountpoint=none
+    /ROOT/default       mountpoint=/
+
+    # Compress /tmp, allow exec but not setuid
+    /tmp                mountpoint=/tmp,exec=on,setuid=off
+
+    # Don't mount /usr so that 'base' files go to the BEROOT
+    /usr                mountpoint=/usr,canmount=off
+
+    # Home directories separated so they are common to all BEs
+    /usr/home           # NB: /home is a symlink to /usr/home
+
+    # Ports tree
+    /usr/ports          setuid=off
+
+    # Source tree (compressed)
+    /usr/src
+
+    # Create /var and friends
+    /var                mountpoint=/var,canmount=off
+    /var/audit          exec=off,setuid=off
+    /var/crash          exec=off,setuid=off
+    /var/log            exec=off,setuid=off
+    /var/mail           atime=on
+    /var/tmp            setuid=off
+
+    # Create /tredly and friends
+    /tredly                                 mountpoint=/tredly
+    /tredly/downloads                       mountpoint=/tredly/downloads
+    /tredly/log                             mountpoint=/tredly/log
+    /tredly/releases                        mountpoint=/tredly/releases
+    /tredly/ptn                             mountpoint=/tredly/ptn
+
+    # set up the releases datasets so that tredly init runs correctly during install
+    /tredly/downloads/10.3-RELEASE          mountpoint=/tredly/downloads/10.3-RELEASE
+    /tredly/releases/10.3-RELEASE           mountpoint=/tredly/releases/10.3-RELEASE
+    
+    # set up the default partition
+    /tredly/ptn/default                     mountpoint=/tredly/ptn/default
+    /tredly/ptn/default/cntr                mountpoint=/tredly/ptn/default/cntr
+    /tredly/ptn/default/data                mountpoint=/tredly/ptn/default/data
+    /tredly/ptn/default/log                 mountpoint=/tredly/ptn/default/log
+    /tredly/ptn/default/psnt                mountpoint=/tredly/ptn/default/psnt
+    /tredly/ptn/default/remotecontainers    mountpoint=/tredly/ptn/default/remotecontainers
+"
+export nonInteractive="NO"
+bsdinstall zfsboot
+export DISTRIBUTIONS="base.txz kernel-tredly.txz lib32.txz ports.txz tredly.txz"
+
+#!/bin/sh
+
+# export an environment variable to indicate this is an ISO installer
+export TREDLYISOINSTALLER="true"
+
+# work out which interface to set up for network install
+iface=""
+for interface in bge0 igb0 em0
+do
+    ifexists=`ifconfig $interface`
+    if [ "$ifexists" != "" ]
+    then
+        iface=$interface
+        break
+    fi
+done
+
+# get an ip address
+dhclient $iface
+
+# set nameservers
+{
+    echo 'nameserver 8.8.8.8'
+    echo 'namesever 8.8.4.4'
+} >> /etc/resolv.conf
+
+# set a default hostname
+hostname tredly
+
+# set up bash fdesc in fstab
+echo "fdesc                   /dev/fd fdescfs rw              0       0" >> /etc/fstab
+
+echo "Installing Tredly"
+
+/tredlyinstall/install.sh
+
+# clean up the install directory
+rm -rf /tredlyinstall
+
+# set MOTD
+echo "Creating /etc/motd"
+mv /etc/motd /etc/motd-backup
+cat << MOTD > /etc/motd
+ ___________ ___________ _   __   __
+|_   _| ___ \  ___|  _  \ |  \ \ / /
+  | | | |_/ / |__ | | | | |   \ V / 
+  | | |    /|  __|| | | | |    \ /  
+  | | | |\ \| |___| |/ /| |____| |  
+  \_/ \_| \_\____/|___/ \_____/\_/  
+               Based on FreeBSD
+               www.tredly.com
+
+MOTD
+
+# set nameservers
+{
+    echo 'nameserver 8.8.8.8'
+    echo 'namesever 8.8.4.4'
+} >> /etc/resolv.conf
+
+echo "Installation complete. Press any key to reboot."
+read confirm
+reboot

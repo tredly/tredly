@@ -17,7 +17,7 @@ then
 fi
 
 # force an update on pkg in case the cache is out of date and bash install fails
-pkg update -f
+env ASSUME_ALWAYS_YES=YES pkg update -f
 
 # install bash before invoking the bash installer
 pkg install -y bash
