@@ -2,6 +2,51 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.0.0]
+#### Added
+* Added max file size check for urls
+* Added container to test layer 4 proxy
+* Added `configchecks.py` to check configfiles
+* Added `strip()` to `subtractfrombroadcast`
+* Added extra checks for partition tests
+* Added note for each URL which is set up. (#11)
+* Added a countdown message  for timeout
+* Added option to continue with installation and confirmation
+* Added timeout of 10 seconds before defaults are used and installation continues automatically.
+* Added full paths to a lot of binaries for ISO install
+* Added user password config
+* Added `pyyml` to installer
+* Added YAML tredlyfile parser (#26)
+* Added more network and firewall tests
+* Improved tests - converted test to python, added layer4 checks, check url redirects
+* Implemented maxCpu cores
+
+#### Changes
+* Moved to testing modules
+* Cleaned up partition directory if no certificates exist inside
+* Setting mode `700` on SSL certificates directories in nginx
+* Changes to installer messages
+* Layer 7 whitelist now applies and cleans up correctly
+* Remove unicode characters from bash output functions
+* Update partition create/destroy to allow percentages and cores
+* Update partition tests to test standard setup
+* Additional check for host config commands
+* Changed where time for replace is output
+* Created partition now allows `ipv4whitelist` to be set
+* Remove renaming of container which is being replaced. (#12)
+* Change the way resource limits are displayed - add success/failed messages (#10)
+* Improved installer menu -- Now has ability to hit enter for default values where one is set
+* Shortened length external interface select message
+* ZFS datasets are now created by installerconfig
+* remove old api password retrieval and replace with set password
+* Set tredly's shell to be bash
+* Update `freebsd-update.conf` to not download kernel since we have a custom one
+* Update bash install to set bash as shell for root and tredly users
+* Update bash install to install root ca certs
+* Remove redundant options from TREDLY kernel conf
+* Remove debug for release
+* Testing zfs config menu for ISO
+
 ## [1.0.0-rc.1]
 #### Added
 - "tredly config host DNS" command implemented
@@ -105,6 +150,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Single codebase (i.e. removal of seperate tredly-host and tredly-build repositories)
 - Framework now written in Python 3 (many supporting libraries are still in written in BASH)
 
+[1.0.0]: https://github.com/tredly/tredly/compare/v1.0.0-rc.1...v1.0.0
+[1.0.0-rc.1]: https://github.com/tredly/tredly/compare/v1.0.0-beta-160610...v1.0.0-rc.1
 [1.0.0-beta - 2016-06-10]: https://github.com/tredly/tredly/compare/v1.0.0-beta-160609...v1.0.0-beta-160610
 [1.0.0-beta - 2016-06-09]: https://github.com/tredly/tredly/compare/v1.0.0-beta-160606...v1.0.0-beta-160609
 [1.0.0-beta - 2016-06-06]: https://github.com/tredly/tredly/compare/v1.0.0-beta...v1.0.0-beta-160606

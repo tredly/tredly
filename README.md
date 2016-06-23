@@ -1,7 +1,7 @@
 # Tredly
 
-- Version: v1.0.0-rc.1
-- Date: June 16 2016
+- Version: v1.0.0
+- Date: June 23 2016
 - [Release notes](https://github.com/tredly/tredly/blob/master/CHANGELOG.md)
 - [GitHub repository](https://github.com/tredly/tredly)
 
@@ -24,13 +24,13 @@ You can find out more information about Tredly at **<http://www.tredly.com>**
 
 ## Requirements
 
-To install Tredly, your server must be running **FreeBSD 10.3 (or above) as Root-on-ZFS**. Further details can be found at the [Tredly Docs site](http://www.tredly.com/docs/?p=31).
+To install Tredly, your server must be running **FreeBSD 10.3 (or above) as Root-on-ZFS**. Further details can be found at the [Tredly Docs site](http://www.tredly.com/docs/?docs=getting-started/installation).
 
 ## Installation
 
 ### Via Git
 
-1. Follow the steps outlined here <http://www.tredly.com/docs/?p=31> to install and set up your host for use with Tredly.
+1. Follow the steps outlined here <http://www.tredly.com/docs/?docs=getting-started/installation> to install and set up your host for use with Tredly.
 2. Clone the Tredly repository to the desired location (we suggest `/tmp`):
 ```
     git clone git://github.com/tredly/tredly.git /tmp
@@ -40,23 +40,19 @@ To install Tredly, your server must be running **FreeBSD 10.3 (or above) as Root
 
 ## Configuration
 
-Tredly can be configured in a number of ways, depending on what you are trying to achieve. We recommend you read the Tredly docs at <http://www.tredly.com/docs/?cat=4> to understand the options you can configure in Tredly.
-
+Tredly can be configured in a number of ways, depending on what you are trying to achieve. We recommend you read the Tredly docs at <http://www.tredly.com/docs/?docs=getting-started> to understand the options you can configure in Tredly.
 
 ## Usage
 
-Tredly incorporates a number of commands for manipulating partitions and their containers. To see a full list of these commands, go to the **[Tredly docs website](http://www.tredly.com/docs/?p=141)**
-
+Tredly incorporates a number of commands for manipulating partitions and their containers. To see a full list of these commands, go to the **[Tredly docs website](http://www.tredly.com/docs/?docs=getting-started/tredly-commands)**
 
 ## Container examples
 
 You can download a number of container examples from **<https://github.com/tredly>**. These examples are there to give you a good starting point for building your own containers.
 
-## Future Plans
+## Extending Tredly
 
-Tredly was built to allow the **[Vuid Business Software Platform](https://www.vuid.com)** to exist. Tredly is currently in a pre-1.0 state, and development is occurring rapidly.
-
-Tredly already has the [Tredly API](https://github.com/tredly/tredly-api), which simplifies updating containers and improves scalability, and [Tredly CLI](https://github.com/tredly/tredly-cli), which provides remote access to a Tredly enabled host. Both products are in active development.
+Tredly already has the [Tredly API](https://github.com/tredly/tredly-api), which simplifies updating containers and improves scalability, and [Tredly CLI](https://github.com/tredly/tredly-cli), which provides remote access to a Tredly enabled host.
 
 ## Contributing
 
