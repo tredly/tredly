@@ -2,6 +2,18 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.0.1]
+#### Fixed
+- Now able to build from current working directory (#32)
+- Container's partition name now being set/retrieved from ZFS correctly (#30)
+- Fixed issue causing DEBUG/Error dialog notice appearing at end of installation and host to not rebooting correctly (#29)
+- Fixed issue with API message not appearing at end of installation (#28)
+- Fixed pathing for current working directory
+
+#### Changed
+- Standardised ZFS property name for partition name
+- Standardised partition name ZFS property
+
 ## [1.0.0]
 #### Added
 * Added max file size check for urls
@@ -150,6 +162,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Single codebase (i.e. removal of seperate tredly-host and tredly-build repositories)
 - Framework now written in Python 3 (many supporting libraries are still in written in BASH)
 
+[1.0.1]: https://github.com/tredly/tredly/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/tredly/tredly/compare/v1.0.0-rc.1...v1.0.0
 [1.0.0-rc.1]: https://github.com/tredly/tredly/compare/v1.0.0-beta-160610...v1.0.0-rc.1
 [1.0.0-beta - 2016-06-10]: https://github.com/tredly/tredly/compare/v1.0.0-beta-160609...v1.0.0-beta-160610
