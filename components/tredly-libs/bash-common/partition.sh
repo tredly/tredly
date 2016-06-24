@@ -87,7 +87,7 @@ function partition_create() {
     fi
 
     # set the partition name
-    zfs_set_property "${ZFS_TREDLY_PARTITIONS_DATASET}/${_partitionName}" "${ZFS_PROP_ROOT}:partitionname" "${_partitionName}"
+    zfs_set_property "${ZFS_TREDLY_PARTITIONS_DATASET}/${_partitionName}" "${ZFS_PROP_ROOT}:partition" "${_partitionName}"
 
     # apply HDD restrictions
     if [[ -n "${_partitionHDD}" ]]; then
@@ -288,7 +288,7 @@ function partition_modify() {
         fi
 
         # set the partition name
-        zfs_set_property "${_newDataset}" "${ZFS_PROP_ROOT}:partitionname" "${_newPartitionName}"
+        zfs_set_property "${_newDataset}" "${ZFS_PROP_ROOT}:partition" "${_newPartitionName}"
 
         # set the new partition name as the one to modify for the stuff below
         _partitionName="${_newPartitionName}"
@@ -575,7 +575,7 @@ function partition_list() {
     # loop over the datasets
     for _dataset in ${_datasets[@]}; do
         # get the data
-        _partitionName=$( zfs_get_property "${_dataset}" "${ZFS_PROP_ROOT}:partitionname" )
+        _partitionName=$( zfs_get_property "${_dataset}" "${ZFS_PROP_ROOT}:partition" )
         _usedSpace=$( zfs_get_property "${_dataset}" "used" )
         _quota=$( zfs_get_property "${_dataset}" "quota" )
         _maxCPU=$( zfs_get_property "${_dataset}" "${ZFS_PROP_ROOT}:maxcpu" )

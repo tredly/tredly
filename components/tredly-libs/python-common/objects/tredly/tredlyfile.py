@@ -11,6 +11,7 @@ from includes.output import *
 class TredlyFile:
     # constructor
     def __init__(self, filePath):
+        
         self.filePath = filePath
         self.__getParser()
         

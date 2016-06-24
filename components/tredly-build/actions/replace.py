@@ -31,7 +31,7 @@ class ActionReplace:
             if (actionArgs['partitionName'] not in partitions):
                 e_error('Partition "' + actionArgs['partitionName'] + '" does not exist.')
                 exit(1)
-
+        
         if (subject == "container"):
             self.replaceContainer(actionArgs['containerName'], identifier, target, actionArgs['path'], actionArgs['ip4Addr'])
         else:

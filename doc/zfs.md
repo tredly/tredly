@@ -64,6 +64,7 @@ None
 * com.tredly:exec_fib - The FIB to use when running commands within a container.
 * com.tredly:stop_timeout - Timeout to wait for a container to stop.
 * com.tredly:containerstate - Container state - allows us to display soemthing descriptive to the user when for example the container is being replaced
+* com.tredly:partition - the name of the partition this container resides in
 
 ## Container Property Arrays
 * com.tredly.tcpinports - array of tcpinports from tredlyfile

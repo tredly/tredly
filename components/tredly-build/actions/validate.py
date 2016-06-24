@@ -17,6 +17,7 @@ from includes.output import *
 
 class ActionValidate:
     def __init__(self, subject, target, identifier, actionArgs):
+        
         # check the subject of this action
         if (subject == "container"):
             self.validateContainer(actionArgs['path'])
@@ -29,12 +30,12 @@ class ActionValidate:
         # Process the tredlyfile
         builtins.tredlyFile = TredlyFile(tredlyFilePath)
         
-        e_header("Validating " + tredlyFilePath + "/Tredlyfile")
+        e_header("Validating " + tredlyFilePath)
         
         # validate it
         if (tredlyFile.validate()):
-            e_success("Successfully validated " + tredlyFilePath + "/Tredlyfile")
+            e_success("Successfully validated " + tredlyFilePath)
         else:
             print('')
-            e_error("Failed to validate " + tredlyFilePath + "/Tredlyfile")
+            e_error("Failed to validate " + tredlyFilePath)
             exit(1)

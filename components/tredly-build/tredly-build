@@ -89,9 +89,8 @@ actionArgs['ip4Addr'] = args.ip4_addr
 
 # default partition name is "default"
 actionArgs['partitionName'] = "default"
+actionArgs['path'] = None
 
-# use current directory by default
-actionArgs['path'] = "./";
 # see if --location was passed and check if its a local or remote path
 # if not set then assume current directory for path
 if (args.location is not None):
@@ -151,18 +150,21 @@ if (args.location is not None):
     elif (os.path.isdir(args.location)):    # check local path
         # find the tredlyfile
         actionArgs['path'] = args.location
-        
     else:
         e_error("Directory " + args.location + " not found")
         exit(1)
 
-# find the tredlyfile
-actionArgs['path'] = findTredlyFile(actionArgs['path'])
-
-if (actionArgs['path'] is None):
-    # error and exit
-    e_error("Could not find a Tredly file at this location")
-    exit(1)
+# if path was supplied then find the tredlyfile
+if (actionArgs['path'] is not None):
+    # find the tredlyfile
+    actionArgs['path'] = findTredlyFile(actionArgs['path'])
+    
+    if (actionArgs['path'] is None):
+        # error and exit
+        e_error("Could not find a Tredly file at this location")
+        exit(1)
+else:
+    actionArgs['path'] = findTredlyFile('./')
 
 # make sure the base ZFS datasets are present
 zfsTredly = ZFSDataset(ZFS_TREDLY_DATASET)

@@ -582,7 +582,7 @@ class Container:
         zfsContainer.setProperty(ZFS_PROP_ROOT + ":host_hostuuid", self.uuid)
         zfsContainer.setProperty(ZFS_PROP_ROOT + ":containername", self.name)
         zfsContainer.setProperty(ZFS_PROP_ROOT + ":containergroupname", self.group)
-        zfsContainer.setProperty(ZFS_PROP_ROOT + ":partitionname", self.partitionName)
+        zfsContainer.setProperty(ZFS_PROP_ROOT + ":partition", self.partitionName)
         zfsContainer.setProperty(ZFS_PROP_ROOT + ":mountpoint", self.mountPoint)
         zfsContainer.setProperty(ZFS_PROP_ROOT + ":maxhdd", self.maxHdd)
         zfsContainer.setProperty(ZFS_PROP_ROOT + ":maxram", self.maxRam)
@@ -703,8 +703,8 @@ class Container:
         self.group = zfsContainer.getProperty(ZFS_PROP_ROOT + ":containergroupname")
         
         # if partition name cant be found then use the dataset
-        if (zfsContainer.getProperty(ZFS_PROP_ROOT + ":partitionname") is not None):
-            self.partitionName = zfsContainer.getProperty(ZFS_PROP_ROOT + ":partitionname")
+        if (zfsContainer.getProperty(ZFS_PROP_ROOT + ":partition") is not None):
+            self.partitionName = zfsContainer.getProperty(ZFS_PROP_ROOT + ":partition")
         else:
              # extract the partition name from the dataset
             self.partitionName = self.dataset.split('/')[3]
