@@ -838,19 +838,10 @@ fi
 
 # echo out confirmation message to user
 e_header "Install Complete"
-if [[ -n "${apiPassword}" ]]; then
-    echo -e "${_colourOrange}${_formatBold}"
-    echo "**************************************"
-    echo "Your API Password is: ${apiPassword}"
-    echo "Please make note of this password so that you may access the API"
-    echo "To change this password, please run the command 'tredly config api password'"
-    echo "To whitelist addresses to access the API, please run the command 'tredly config api whitelist <ipaddr1>,<ipaddr2>'"
-    echo ""
-    echo -e "**************************************${_formatReset}"
-fi
 echo -e "${_colourMagenta}"
-echo -e "Please ${_formatBold}REBOOT${_formatReset}${_colourMagenta} your host for the new kernel and settings to take effect."
 echo ""
+echo "To change your API password, please run the command 'tredly config api password'"
+echo "To whitelist addresses to access the API, please run the command 'tredly config api whitelist <ipaddr1>,<ipaddr2>'"
 echo "Please note that the SSH port has changed. Please use the following command to connect to your host after reboot:"
 echo "ssh -p 65222 tredly@$( lcut "${_configOptions[2]}" "/" )"
 echo -e "${_formatReset}"

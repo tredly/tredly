@@ -1,4 +1,5 @@
 export ZFSBOOT_DISKS=ada0
+
 export ZFSBOOT_DATASETS="
     # DATASET           OPTIONS (comma or space separated; or both)
 
@@ -48,8 +49,7 @@ export ZFSBOOT_DATASETS="
     /tredly/ptn/default/psnt                mountpoint=/tredly/ptn/default/psnt
     /tredly/ptn/default/remotecontainers    mountpoint=/tredly/ptn/default/remotecontainers
 "
-export nonInteractive="NO"
-bsdinstall zfsboot
+
 export DISTRIBUTIONS="base.txz kernel-tredly.txz lib32.txz ports.txz tredly.txz"
 
 #!/bin/sh
@@ -112,6 +112,6 @@ MOTD
     echo 'namesever 8.8.4.4'
 } >> /etc/resolv.conf
 
-echo "Installation complete. Press any key to reboot."
+echo "Installation complete. Please remove the CD and press any key to reboot."
 read confirm
 reboot
