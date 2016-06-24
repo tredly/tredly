@@ -15,6 +15,10 @@ from subprocess import Popen, PIPE
 # looks for a tredlyfile at the given path and returns the full path to the tredlyfile
 # if none found, None is returned
 def findTredlyFile(path):
+    # strip trailing slash from path
+    path = path.rstrip('/')
+    
+    # make sure dir exists
     if (not os.path.isdir(path)):
         return None
     
