@@ -445,14 +445,14 @@ function generate_mac_address() {
 # changes the hosts network details
 function ip4_set_host_network() {
     local _interface="${1}"
-    local _ip4="${2}"
+    local _ip4Arg="${2}"
 
-    local _ip4CIDR=$( rcut "${_ip4}" '/' )
-    local _ip4=$( lcut "${_ip4}" '/' )
+    local _ip4CIDR=$( rcut "${_ip4Arg}" '/' )
+    local _ip4=$( lcut "${_ip4Arg}" '/' )
 
     local _exitCode=0
     
-    e_header "Setting Tredly host IP address to ${2} on interface ${_interface}"
+    e_header "Setting Tredly host IP address to ${_ip4} on interface ${_interface}"
     
 
     if [[ -z "${_ip4}" ]]; then

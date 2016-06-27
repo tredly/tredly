@@ -1,0 +1,9 @@
+include GENERIC
+ident TREDLY
+
+nooptions       SCTP   # Stream Control Transmission Protocol
+options         VIMAGE # VNET/Vimage support
+#options         RACCT  # Resource containers (Now in 10.3 GENERIC kernel)
+#options         RCTL   # same as above (Now in 10.3 GENERIC kernel)
+nooptions       RACCT_DEFAULT_TO_DISABLED
+nomakeoptions   DEBUG

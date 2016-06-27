@@ -1212,7 +1212,6 @@ class Container:
         if (process.returncode != 0):
             e_error("Failed to add host interface to bridge")
         
-        
         # indicate that this epair is paired with a container
         cmd = ["ifconfig", self.hostInterface.name, "description", "Connected to container " + self.uuid]
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE);
@@ -1307,12 +1306,20 @@ class Container:
             e_success("Success")
         else:
             e_error("Failed")
+        
+        # add a startepoch entry to ZFS
+        zfsContainer.appendArray(ZFS_PROP_ROOT + '.startepoch', str(time.time()))
+        
+        # get the start times back from ZFS
+        startTimes = zfsContainer.getArray(ZFS_PROP_ROOT + '.startepoch')
 
-        # run the on create commands
-        self.runOnCreateCmds()
+        # if this is the first time this container has started then run the oncreate commands and set up the onstop script
+        if (len(startTimes) == 1):
+            # run the on create commands
+            self.runOnCreateCmds()
 
-        # create the onstop script
-        self.createOnStopScript()
+            # create the onstop script
+            self.createOnStopScript()
         
         # set up the container's hostname in DNS
         e_note("Adding container to DNS")

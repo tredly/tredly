@@ -50,7 +50,7 @@ export ZFSBOOT_DATASETS="
     /tredly/ptn/default/remotecontainers    mountpoint=/tredly/ptn/default/remotecontainers
 "
 
-export DISTRIBUTIONS="base.txz kernel-tredly.txz lib32.txz ports.txz tredly.txz"
+export DISTRIBUTIONS="base.txz kernel-tredly.txz lib32.txz ports.txz"
 
 #!/bin/sh
 
@@ -85,7 +85,10 @@ hostname tredly
 echo "fdesc                   /dev/fd fdescfs rw              0       0" >> /etc/fstab
 
 echo "Installing Tredly"
-
+env ASSUME_ALWAYS_YES=YES pkg bootstrap
+env ASSUME_ALWAYS_YES=YES pkg install -y git bash
+mkdir -p /tredlyinstall
+/usr/local/bin/git clone https://github.com/tredly/tredly.git /tredlyinstall
 /tredlyinstall/install.sh
 
 # clean up the install directory

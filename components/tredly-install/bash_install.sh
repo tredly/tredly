@@ -26,6 +26,9 @@ IFS=$'\n' declare -a _externalInterfaces=($( get_external_interfaces ))
 # Check if VIMAGE module is loaded
 _vimageInstalled=$( sysctl kern.conftxt | grep '^options[[:space:]]VIMAGE$' | wc -l )
 
+# get time since epoch to rename existing files
+_epochTime=$( date +%s )
+
 ###############################
 declare -a _configOptions
 
@@ -138,16 +141,22 @@ e_header "Tredly Installation"
 ##########
 e_note "Configuring users"
 _exitCode=0
-# set root password
-echo "${_configOptions[8]}" | /usr/sbin/pw usermod root -h 0
-_exitCode=$(( ${_exitCode} & $? ))
-# set root to use bash shell
-/usr/sbin/pw usermod root -s /usr/local/bin/bash
+# set root password and bash shell
+echo "${_configOptions[8]}" | /usr/sbin/pw usermod root -s /usr/local/bin/bash -h 0
 _exitCode=$(( ${_exitCode} & $? ))
 
 # set up tredly user and password with bash shell
-echo "${_configOptions[8]}" | /usr/sbin/pw useradd -n tredly -s /usr/local/bin/bash -m -h 0
-_exitCode=$(( ${_exitCode} & $? ))
+# check if user exists
+id tredly > /dev/null 2>&1
+if [[ $? -eq 0 ]]; then
+    # user exists, so change password
+    echo "${_configOptions[9]}" | /usr/sbin/pw usermod tredly -s /usr/local/bin/bash -h 0
+    _exitCode=$(( ${_exitCode} & $? ))
+else
+    # user doesnt exist, so create user
+    echo "${_configOptions[9]}" | /usr/sbin/pw useradd -n tredly -s /usr/local/bin/bash -m -h 0
+    _exitCode=$(( ${_exitCode} & $? ))
+fi
 
 # add tredly user to wheel group for su access
 pw groupmod wheel -m tredly
@@ -166,7 +175,7 @@ e_note "Configuring /etc/rc.conf"
 _exitCode=0
 # rename the existing rc.conf if it exists
 if [[ -f "/etc/rc.conf" ]]; then
-    mv /etc/rc.conf /etc/rc.conf.old
+    mv /etc/rc.conf /etc/rc.conf.${_epochTime}
 fi
 _exitCode=$(( ${_exitCode} & $? ))
 cp ${_DIR}/os/etc/rc.conf /etc/
@@ -205,7 +214,7 @@ _exitCode=0
 e_note "Fetching and Installing FreeBSD Updates"
 # install our custom freebsd update that prevents kernel updates
 if [[ -f "/usr/local/etc/pkg.conf" ]]; then
-    mv /etc/freebsd-update.conf /etc/freebsd-update.conf.old
+    mv /etc/freebsd-update.conf /etc/freebsd-update.conf.${_epochTime}
 fi
 cp ${_DIR}/os/etc/freebsd-update.conf /etc/
 _exitCode=$(( ${_exitCode} & $? ))
@@ -224,7 +233,7 @@ fi
 # set up pkg
 e_note "Configuring PKG"
 if [[ -f "/usr/local/etc/pkg.conf" ]]; then
-    mv /usr/local/etc/pkg.conf /usr/local/etc/pkg.conf.old
+    mv /usr/local/etc/pkg.conf /usr/local/etc/pkg.conf.${_epochTime}
 fi
 cp ${_DIR}/os/usr/local/etc/pkg.conf /usr/local/etc/
 if [[ $? -eq 0 ]]; then
@@ -306,7 +315,7 @@ if [[ $( str_to_lower "${_CONF_COMMON[enableSSHD]}") == 'yes' ]]; then
 
     # if the user has their own sshd config then preserve it
     if [[ -f "/etc/ssh/sshd_config" ]]; then
-        mv /etc/ssh/sshd_config /etc/ssh/sshd_config.old
+        mv /etc/ssh/sshd_config /etc/ssh/sshd_config.${_epochTime}
         _exitCode=$(( ${_exitCode} & $? ))
     fi
     
@@ -396,7 +405,7 @@ fi
 _exitCode=0
 e_note "Configuring OpenNTP"
 if [[ -f "/usr/local/etc/ntpd.conf" ]]; then
-    mv /usr/local/etc/ntpd.conf /usr/local/etc/ntpd.conf.old
+    mv /usr/local/etc/ntpd.conf /usr/local/etc/ntpd.conf.${_epochTime}
 fi
 cp ${_DIR}/os/usr/local/etc/ntpd.conf /usr/local/etc/
 _exitCode=$(( ${_exitCode} & $? ))
@@ -421,7 +430,7 @@ e_note "Configuring kernel options"
 _exitCode=0
 
 if [[ -f "/boot/loader.conf" ]]; then
-    mv /boot/loader.conf /boot/loader.conf.old
+    mv /boot/loader.conf /boot/loader.conf.${_epochTime}
 fi
 cp ${_DIR}/os/boot/loader.conf /boot/
 if [[ $? -eq 0 ]]; then
@@ -433,7 +442,7 @@ fi
 e_note "Configuring Sysctl"
 
 if [[ -f "/etc/sysctl.conf" ]]; then
-    mv /etc/sysctl.conf /etc/sysctl.conf.old
+    mv /etc/sysctl.conf /etc/sysctl.conf.${_epochTime}
 fi
 cp ${_DIR}/os/etc/sysctl.conf /etc/
 if [[ $? -eq 0 ]]; then
