@@ -2,6 +2,21 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.0.2]
+#### Added
+Added `startepoch` array to ZFS for containers to track when they have been started & to facilitate the `onCreate` command fix
+
+#### Changed
+Changed variable name for function `ip4_set_host_network` to mitigate namespace issues
+Changed tredly ISO installer to pull from github instead of using local files
+If tredly user is already created then modify the user, otherwise create the user
+
+#### Fixed
+Using tredly password to set tredly user password (formerly used root password)
+Fixed tredly kernel recompile
+Renaming files to be `XX.(epochtime)` instead of `xx.old` (allows for archiving of user files)
+Only run the `onCreate` commands and create the `onStop` script on first boot of container
+
 ## [1.0.1]
 #### Fixed
 - Now able to build from current working directory (#32)
@@ -162,6 +177,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Single codebase (i.e. removal of seperate tredly-host and tredly-build repositories)
 - Framework now written in Python 3 (many supporting libraries are still in written in BASH)
 
+[1.0.2]: https://github.com/tredly/tredly/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/tredly/tredly/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/tredly/tredly/compare/v1.0.0-rc.1...v1.0.0
 [1.0.0-rc.1]: https://github.com/tredly/tredly/compare/v1.0.0-beta-160610...v1.0.0-rc.1
