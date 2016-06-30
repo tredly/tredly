@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.0.3]
+#### Added
+- Added semaphore settings to loader.conf
+- Added sysv_ipc allowed = 1 to sysctl.conf
+- Added use RAM only to sysctl.conf
+
 ## [1.0.2]
 #### Added
 Added `startepoch` array to ZFS for containers to track when they have been started & to facilitate the `onCreate` command fix
