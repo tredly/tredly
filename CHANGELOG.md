@@ -183,6 +183,7 @@ Only run the `onCreate` commands and create the `onStop` script on first boot of
 - Single codebase (i.e. removal of seperate tredly-host and tredly-build repositories)
 - Framework now written in Python 3 (many supporting libraries are still in written in BASH)
 
+[1.0.3]: https://github.com/tredly/tredly/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/tredly/tredly/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/tredly/tredly/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/tredly/tredly/compare/v1.0.0-rc.1...v1.0.0
