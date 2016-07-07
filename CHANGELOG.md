@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.1.1]
+#### Fixed
+- Installer/tredly-cc: Fixed incorrect location/branch of tredly-cc in install.conf
+
 ## [1.1.0]
 #### Added
 - Tredly-build: Add "startepoch" array to ZFS for containers to track when they have been started & to facilitate the above oncreate command fix
