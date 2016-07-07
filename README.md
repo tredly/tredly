@@ -40,7 +40,7 @@ To install Tredly, your server must be running **FreeBSD 10.3 (or above) as Root
 
 ### Via ISO
 
-A full FreeBSD and Tredly installation ISO can be downloaded from <https://s3-us-west-2.amazonaws.com/tredly-isos/Tredly-1.0-RELEASE-amd64.iso>
+A full FreeBSD and Tredly installation ISO can be downloaded from <https://s3-us-west-2.amazonaws.com/tredly-isos/Tredly-1.1-RELEASE-amd64.iso>
 
 ## Configuration
 
