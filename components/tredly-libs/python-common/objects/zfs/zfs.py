@@ -47,16 +47,16 @@ class ZFSDataset:
             return True;
         
         # create the zfs dataset with the given mountpoint
-        process = Popen(['zfs', 'create', '-pu', '-o', 'mountpoint=' + self.mountPoint, self.dataset],  stdin=PIPE, stdout=PIPE, stderr=PIPE);
-        stdOut, stdErr = process.communicate();
-        rc = process.returncode;
+        process = Popen(['zfs', 'create', '-pu', '-o', 'mountpoint=' + self.mountPoint, self.dataset],  stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        stdOut, stdErr = process.communicate()
+        rc = process.returncode
         
         # check exit code from zfs create
         if (rc != 0):
             # failed so return
-            return False;
+            return False
         
-        return True;
+        return True
 
     # Action: destroy a ZFS dataset
     #
@@ -392,3 +392,41 @@ class ZFSDataset:
                 return False
 
         return True
+
+    # Action: takes a snapshot of this dataset
+    #
+    # Pre: dataset exists
+    # Post: a zfs snapshot has been taken of this dataset
+    #
+    # Params: snapshotName - the name of the snapshot
+    #
+    # Return: True if success False otherwise
+    def takeSnapshot(self, snapshotName):
+        cmd = ['zfs', 'snapshot', self.dataset + '@' + snapshotName]
+        process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        stdOut, stdErr = process.communicate()
+        return (process.returncode == 0)
+
+    # Action: saves a snapshot to a given filename
+    #
+    # Pre: dataset exists, snapshot exists
+    # Post: the zfs snapshot has been saved as an xzipped file
+    #
+    # Params: snapshotName - the name of the snapshot
+    #
+    # Return: True if success False otherwise
+    def sendSnapshotToFile(self, snapshotName, filePath):
+        #zfs send -p zroot/tredly/ptn/default/cntr/ugCiYHvR@test | xz -zf - > directory.tar.xz
+        zfsCmd = ['zfs', 'send', '-p', self.dataset + '@' + snapshotName]
+        xzCmd = ['xz', '-zf', '-']
+        
+        # open the file to take stdout
+        with open(filePath, 'w') as output:
+            # run the commands
+            zfsResult = Popen(zfsCmd, stdout=PIPE)
+            # pipe zfs data into the next command and send stdout to the file
+            xzResult = Popen(xzCmd, stdin=zfsResult.stdout, stdout=output)
+
+        stdOut, stdErr = xzResult.communicate()
+        
+        return (xzResult.returncode == 0)

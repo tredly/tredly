@@ -25,14 +25,16 @@ None
 * com.tredly:persistentmountpoint - Where persistent storage is mounted
 * com.tredly:persistentdataset - The dataset of the mounted persistent storage
 * com.tredly:anchorname - Anchor name within PF with this container's firewall rules
-* com.tredly:ip6 - the IP6 data 
+* com.tredly:ip6 - the IP6 data
 * com.tredly:maxcpu - maximum cpu available to this container
 * com.tredly:maxram - maximum ram available to this container
 * com.tredly:allow_quotas - allows disk quotas
 * com.tredly:maxhdd - maximum disk space available to container
 * com.tredly:endepoch - Time since epoch that container finished building
 * com.tredly:mountpoint - Where this container is mounted on the filesystem
+* com.tredly:onstartscript - The location within the container of the script to run on start
 * com.tredly:onstopscript - The location within the container of the script to run on stop
+* com.tredly:ondestroyscript - The location within the container of the script to run on destroy
 * com.tredly:nginx_upstream_dir - The directory on the host where nginx upstream files are kept
 * com.tredly:nginx_servername_dir - The directory on the host where nginx servername files are kept
 * com.tredly:nginx_accessfile_dir - The directory on the host where nginx access files are kept

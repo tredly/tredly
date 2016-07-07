@@ -96,12 +96,12 @@ actionArgs['path'] = None
 if (args.location is not None):
     # support http, https, and ftp
     if (args.location.startswith('http://') or args.location.startswith('https://') or args.location.startswith('ftp://')):
-        
+
         e_note("Fetching " + args.location)
-        
+
         # get a uuid for this download
         uuid = generateShortUUID()
-        
+
         # set where to download this file to
         destinationDir = TREDLY_PARTITIONS_MOUNT + '/' + partitionName + '/' + TREDLY_PTN_DATA_DIR_NAME + '/' + TREDLY_PTN_REMOTECONTAINERS_DIR_NAME + '/' + uuid
         destinationFile = args.location.split('/')[-1]
@@ -120,7 +120,7 @@ if (args.location is not None):
             # uncomment to ignore SSL certificate errors
             #ctx.check_hostname = False
             #ctx.verify_mode = ssl.CERT_NONE
-            
+
             # download it
             with urllib.request.urlopen(args.location, context=ctx) as u, open(destinationDir + '/' + destinationFile, 'wb') as f:
                 # write it to file
@@ -132,16 +132,16 @@ if (args.location is not None):
             # catch 404 errors etc
             e_error("An error occurred when downloading " + args.location)
             exit(1)
-        
+
         # extract the file
         try:
             with tarfile.open(destinationDir + '/' + destinationFile) as f:
                 # extract it
                 f.extractall(destinationDir + '/container')
-                
+
                 # now set the path to be where we extracted the file to and proceed with building
                 actionArgs['path'] = destinationDir + '/container'
-                
+
 
         except:
             e_error("Failed to extract the file")
@@ -158,7 +158,7 @@ if (args.location is not None):
 if (actionArgs['path'] is not None):
     # find the tredlyfile
     actionArgs['path'] = findTredlyFile(actionArgs['path'])
-    
+
     if (actionArgs['path'] is None):
         # error and exit
         e_error("Could not find a Tredly file at this location")

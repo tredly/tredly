@@ -18,8 +18,8 @@ declare -a _SUBCOMMANDS
 declare -a _ENTIREFLAGS
 
 # versioning
-_VERSIONNUMBER="1.0.3"
-_VERSIONDATE="June 30 2016"
+_VERSIONNUMBER="1.1.0"
+_VERSIONDATE="July 7 2016"
 
 _SHOW_HELP=false
 _ARGS=($@)
@@ -49,7 +49,7 @@ if [[ "${_TREDLY_DIR}" == "/usr/local/sbin" ]]; then
     _TREDLY_DIR_CONF="/usr/local/etc/tredly"
 else
     # non installed location
-    
+
     # set some useful variables
     _TREDLY_DIR_LIB="${_TREDLY_DIR}/../tredly-libs/bash-common"
     _TREDLY_DIR_COMMANDS="${_TREDLY_DIR}/commands"

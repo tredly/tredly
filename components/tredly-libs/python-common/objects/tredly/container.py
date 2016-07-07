@@ -46,7 +46,9 @@ class Container:
         self.dns = []                    # list of dns servers this container uses
         self.layer4Proxy = None
         self.onCreate = []
+        self.onStart = []
         self.onStop = []
+        self.onDestroy = []
         self.urls = []                    # list of translated urls from tredlyfile
         self.replicate = None
         self.maxCpu = None                  # maximum cpu available to this container
@@ -73,6 +75,8 @@ class Container:
         self.allowQuotas = None            # Allows quotas to be applied on container filesystems.
         self.mountPoint = None              
         self.onStopScript = None            # The location within the container of the script to run on stop
+        self.onStartScript = None          # the location within the container of the script ot run on start
+        self.onDestroyScript = None
         self.nginxUpstreamDir = None      # The directory on the host where nginx upstream files are kept
         self.nginxServernameDir = None    # The directory on the host where nginx servername files are kept
         self.nginxAccessfileDir = None    # The directory on the host where nginx access files are kept
@@ -138,11 +142,26 @@ class Container:
         self.ipv4Whitelist = builtins.tredlyFile.json['container']['firewall']['ipv4Whitelist']
         self.layer4Proxy = builtins.tredlyFile.json['container']['proxy']['layer4Proxy']
         self.onCreate = builtins.tredlyFile.json['container']['operations']['onCreate']
-        self.onStop = builtins.tredlyFile.json['container']['operations']['onStop']
         self.urls = builtins.tredlyFile.json['container']['proxy']['layer7Proxy']
         self.replicate = builtins.tredlyFile.json['container']['replicate']
         self.startOrder = builtins.tredlyFile.json['container']['startOrder']
         self.technicalOptions = builtins.tredlyFile.json['container']['technicalOptions']
+        
+        # get the scripts
+        try:
+            self.onStart = builtins.tredlyFile.json['container']['operations']['onStart']
+        except KeyError:
+            self.onStart = []
+            
+        try:
+            self.onStop = builtins.tredlyFile.json['container']['operations']['onStop']
+        except KeyError:
+            self.onStop = []
+        
+        try:
+            self.onDestroy = builtins.tredlyFile.json['container']['operations']['onDestroy']
+        except KeyError:
+            self.onDestroy = []
         
         # ignore the unlimited value as it is the same as none
         if (builtins.tredlyFile.json['container']['resourceLimits']['maxCpu'] == 'unlimited'):
@@ -172,8 +191,6 @@ class Container:
             self.dns = builtins.tredlyCommonConfig.dns
         else:
             self.dns = builtins.tredlyFile.json['container']['customDNS']
-            
-        self.onStopScript = None
         
         # domain name = partition name + tld
         self.domainName = self.partitionName + '.' + builtins.tredlyCommonConfig.tld
@@ -359,7 +376,7 @@ class Container:
         
         # ################# 
         # Pre flight checks
-        # set up a set of certs to copy so we can validate that they exist,a nd then copy them in
+        # set up a set of certs to copy so we can validate that they exist, and then copy them in
         certsToCopy = set() # use a set for unique values
         for url in builtins.tredlyFile.json['container']['proxy']['layer7Proxy']:
             if (url['cert'] is not None):
@@ -746,7 +763,9 @@ class Container:
         self.ip4SaddrSel = zfsContainer.getProperty(ZFS_PROP_ROOT + ":ip4_saddrsel")
         self.domainName = zfsContainer.getProperty(ZFS_PROP_ROOT + ":domainname")
         self.buildEpoch = zfsContainer.getProperty(ZFS_PROP_ROOT + ":buildepoch")
+        self.onStartScript = zfsContainer.getProperty(ZFS_PROP_ROOT + ":onstartscript")
         self.onStopScript = zfsContainer.getProperty(ZFS_PROP_ROOT + ":onstopscript")
+        self.onDestroyScript = zfsContainer.getProperty(ZFS_PROP_ROOT + ":ondestroyscript")
         self.hostIface = zfsContainer.getProperty(ZFS_PROP_ROOT + ":host_iface")
         self.releaseName = zfsContainer.getProperty(ZFS_PROP_ROOT + ":releasename")
         self.hostname = self.name
@@ -1313,13 +1332,48 @@ class Container:
         # get the start times back from ZFS
         startTimes = zfsContainer.getArray(ZFS_PROP_ROOT + '.startepoch')
 
-        # if this is the first time this container has started then run the oncreate commands and set up the onstop script
+        # if this is the first time this container has started then run the oncreate commands and set up the onstart/stop scripts
         if (len(startTimes) == 1):
             # run the on create commands
             self.runOnCreateCmds()
 
+            # create teh onstart script
+            e_note("Creating onStart script")
+            self.onStartScript = '/etc/rc.onstart'
+            if (self.createScript(self.onStartScript, self.onStart)):
+                # place onstartscript into ZFS
+                zfsContainer.setProperty(ZFS_PROP_ROOT + ":onstartscript", self.onStartScript)
+                e_success()
+            else:
+                e_error()
+
             # create the onstop script
-            self.createOnStopScript()
+            e_note("Creating onStop script")
+            self.onStopScript = '/etc/rc.onstop'
+            if (self.createScript(self.onStopScript, self.onStop)):
+                # place onstopscript into ZFS
+                zfsContainer.setProperty(ZFS_PROP_ROOT + ":onstopscript", self.onStopScript)
+                e_success()
+            else:
+                e_error()
+                
+            # create the onstop script
+            e_note("Creating onDestroy script")
+            self.onDestroyScript = '/etc/rc.ondestroy'
+            if (self.createScript(self.onDestroyScript, self.onDestroy)):
+                # place onstopscript into ZFS
+                zfsContainer.setProperty(ZFS_PROP_ROOT + ":ondestroyscript", self.onDestroyScript)
+                e_success()
+            else:
+                e_error()
+        
+        # check if an onstart script is set and if so, run it
+        if (self.onStartScript is not None):
+            e_note("Running onStart script")
+            if (self.runCmd('sh -c "' + self.onStartScript + '"')):
+                e_success("Success")
+            else:
+                e_error("Failed")
         
         # set up the container's hostname in DNS
         e_note("Adding container to DNS")
@@ -1400,10 +1454,10 @@ class Container:
     # Pre: container dataset exists
     # Post: this container has been stopped and all relevant files (nginx/unbound etc) have been cleaned up
     #
-    # Params: 
+    # Params: destroying - a flag on whether or not this container will be destroyed after stop. used to run ondestroy commands before the container stops.
     #
     # Return: True if succeeded, False otherwise
-    def stop(self):
+    def stop(self, destroying = False):
         tredlyHost = TredlyHost()
         
         zfsContainer = ZFSDataset(self.dataset, self.mountPoint)
@@ -1627,6 +1681,14 @@ class Container:
             if (self.onStopScript is not None):
                 e_note("Running onStop script")
                 if (self.runCmd('sh -c "' + self.onStopScript + '"')):
+                    e_success("Success")
+                else:
+                    e_error("Failed")
+            
+            # run the ondestroy script if the destroy flag is set and we have a destroy script
+            if (destroying) and (self.onDestroyScript is not None):
+                e_note("Running onDestroy script")
+                if (self.runCmd('sh -c "' + self.onDestroyScript + '"')):
                     e_success("Success")
                 else:
                     e_error("Failed")
@@ -1886,7 +1948,7 @@ class Container:
     
     # Action: run the oncreate commands within this container
     #
-    # Pre: container dataset exists
+    # Pre: container dataset exists, container is started
     # Post: oncreate commands have been run within this container
     #
     # Params: 
@@ -1895,7 +1957,7 @@ class Container:
     def runOnCreateCmds(self):
         # loop over the create commands
         for createCmd in self.onCreate:
-            if (createCmd['type'] == "exec"):    # ONSTART COMMANDS
+            if (createCmd['type'] == "exec"):    # ONCREATE COMMANDS
                 e_note('Running onStart command: "' +  createCmd['value'] +'"')
                 
                 # run it
@@ -1988,47 +2050,40 @@ class Container:
         stdOut, stdErr = process.communicate()
         if (process.returncode != 0):
             # errored
-            print(str(stdOut))
-            print(str(stdErr))
+            print(stdOut.decode('UTF-8'))
+            print(stdErr.decode('UTF-8'))
             return False
         
         return True
     
-    # Action: creates an onstop script within this container based upon the onstop commands
+    # Action: creates a script within this container based upon the given commands
     #
     # Pre: this container dataset exists
-    # Post: /etc/rc.onstop has been created with onstop commands
+    # Post: filePath (within container) has been created with onstop commands
     #
-    # Params: 
+    # Params: filePath - the path to the file to create
+    #         commands - a list of commands to run
     #
     # Return: True if succeeded, False otherwise
-    def createOnStopScript(self):
-        # set the onstop script location
-        self.onStopScript = "/etc/rc.onstop"
-        
-        e_note("Creating onStop script")
+    def createScript(self, filePath, commands):
+        # set the full path for the host
+        fullFilePath = self.mountPoint + '/root' + filePath
         
         # open the onstop script and write in the commands
-        with open(self.mountPoint + '/root' + self.onStopScript, "w") as onstop_script:
+        with open(fullFilePath, "w") as script:
             # put the shebang into the file
-            print("#!/usr/bin/env sh", file=onstop_script)
+            print("#!/usr/bin/env sh", file=script)
             
-            # loop over the create commands
-            for stopCmd in self.onStop:
-                if (stopCmd['type'] == "exec"):
+            # loop over the commands
+            for cmd in commands:
+                if (cmd['type'] == "exec"):
                     # put the command into the onstop file
-                    print(stopCmd['value'], file=onstop_script)
+                    print(cmd['value'], file=script)
                 else:
-                    print("Unknown command " + stopCmd['type'])
+                    e_warning("Unknown command " + cmd['type'])
         
         # set the file's permissions
-        os.chmod(self.mountPoint + '/root' + self.onStopScript, 0o700)
-        
-        # place onstopscript into ZFS
-        zfsContainer = ZFSDataset(self.dataset, self.mountPoint)
-        zfsContainer.setProperty(ZFS_PROP_ROOT + ":onstopscript", self.onStopScript)
-        
-        e_success("Success")
+        os.chmod(fullFilePath, 0o700)
         
         return True
         
@@ -2364,3 +2419,182 @@ class Container:
                 returnValue = (True and returnValue)
         
         return returnValue
+    
+    # Action: Moves this container to a new host
+    #
+    # Pre: container exists
+    # Post: container has been moved to a new host and destroyed locally
+    #
+    # Params: host - the host to move it to
+    #
+    # Return: True if succeeded, False otherwise
+    def moveToHost(self, userHostPortString):
+        
+        # TODO: moving containers with URLs presents an issue with setting up of SSLCerts on the remote host where the container's SSL cert comes from the container directory
+        # this could potentially be mitigated by keeping copies of the container certs within the container itself under <uuid>/sslcerts
+        if (len(self.urls)):
+            e_error("This container is associated with " + str(len(self.urls)) + " URL(s). Container move does not currently support moving containers associated with URLs.")
+            return False
+        
+        # split out the host into user, hostname/ip and port
+        # get the port
+        if (':' in userHostPortString):
+            port = userHostPortString.split(':', 1)[-1]
+        else:
+            port = "22"
+
+        # get the user
+        if ('@' in userHostPortString):
+            user = userHostPortString.split('@', 1)[0]
+        else:
+            user = 'tredly'
+        
+        # get the host
+        if ('@' in userHostPortString) and (':' in userHostPortString): # matches username@host:port
+            host = userHostPortString.split('@', 1)[-1].split(':', 1)[0]
+        elif ('@' in userHostPortString) and (not ':' in userHostPortString):   # matches username@host
+            host = userHostPortString.split('@', 1)[-1]
+        elif (not '@' in userHostPortString) and (':' in userHostPortString):   # matches host:port
+            host = userHostPortString.split(':', 1)[0]
+        else:
+            host = userHostPortString
+
+        # set up an ssh command list so that we dont have to keep typing it
+        sshCmd = ['ssh', '-p', port, user + "@" + host]
+
+        # check that tredly is installed on the other machine
+        e_note("Checking if the remote host has Tredly installed")
+        cmd = sshCmd + ['which tredly']
+        process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        stdOut, stdErr = process.communicate()
+        
+        if (process.returncode == 0):
+            e_success()
+        else:
+            e_error("Tredly is not installed on the remote host")
+            return False
+        
+        # make sure this container's uuid isnt already in use on the remote machine
+        e_note("Checking that this UUID does not exist on the remote host")
+        cmd = sshCmd + ['zfs get -H -o property,value all | grep "' + ZFS_PROP_ROOT + ':host_hostuuid"']
+        process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        stdOut, stdErr = process.communicate()
+        rc = process.returncode
+        
+        stdOutString = stdOut.decode('UTF-8')
+        
+        # look for the uuid of this container
+        for line in stdOutString.splitlines():
+            if (line.split()[1] == self.uuid):
+                e_error("Cannot move container because the container's UUID " + self.uuid + " already exists on the remote host.")
+                return False
+        e_success()
+
+        # check that the container's partition is set up on the other machine
+        e_note("Checking if partition " + self.partitionName + " exists on the remote host.")
+        cmd = sshCmd + ['tredly list partition ' + self.partitionName]
+        process = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        stdOut, stdErr = process.communicate()
+        
+        if (process.returncode == 0):
+            e_success()
+        else:
+            e_error()
+            return False
+        
+        # TODO: make sure that the container's URL certs exist on the remote host
+
+        # set snapshot name to current epoch
+        snapshotName = str(time.time())
+        
+        # get a handle to ZFS properties
+        zfsContainer = ZFSDataset(self.dataset, self.mountPoint)
+        
+        # shut down the container
+        e_note("Stopping Container")
+        if (self.stop()):
+            e_success()
+        else:
+            e_error()
+            return False
+        
+        # take a snapshot of the container
+        e_note("Snapshotting Container")
+        if (zfsContainer.takeSnapshot(snapshotName)):
+            e_success()
+        else:
+            e_error()
+            return False
+        
+        # send the snapshot to an xzipped file
+        e_note("Saving Snapshot. This may take some time...")
+        # TODO: change this from /tmp to something else
+        filePath = '/tmp/' + self.uuid + '-' + snapshotName + '.xz'
+        if (zfsContainer.sendSnapshotToFile(snapshotName, filePath)):
+            e_success()
+        else:
+            e_error()
+            return False
+        
+        # copy the file across
+        e_note("Copying file to host " + host)
+        cmd = ['scp', '-P', port, filePath, user + "@" + host + ':' + filePath]
+        process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        stdOut, stdErr = process.communicate()
+        rc = process.returncode
+        if (rc == 0):
+            e_success()
+        else:
+            e_error()
+            return False
+        
+        # unpack the file on the remote host and restore the snapshot
+        e_note("Unpacking file on host " + host)
+        cmd = ['ssh', '-p', port, user + "@" + host, 'xz -d < ' + filePath + ' | zfs receive ' + self.dataset]
+        process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        stdOut, stdErr = process.communicate()
+        rc = process.returncode
+        if (rc == 0):
+            e_success()
+        else:
+            e_error()
+            return False
+
+        # start the container on the remote host
+        e_note("Starting container " + self.name + " on host " + host)
+        cmd = ['ssh', '-p', port, user + "@" + host, 'tredly', 'start', 'container', self.uuid]
+        process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        stdOut, stdErr = process.communicate()
+        rc = process.returncode
+        if (rc == 0):
+            e_success()
+        else:
+            e_error()
+            print(stdOut.decode('UTF-8'))
+            return False
+
+        # Set the local dataset to be state "moved" instead of deleting it
+        zfsContainer.setProperty(ZFS_PROP_ROOT + ':containerstate', 'moved')
+
+        # remove the file on the remote and local hosts
+        e_note("Cleaning up local host")
+        cmd = ['rm', '-f', filePath]
+        process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        stdOut, stdErr = process.communicate()
+        rc = process.returncode
+        if (rc == 0):
+            e_success()
+        else:
+            e_error()
+        
+        e_note("Cleaning up remote host")
+        cmd = ['ssh', '-p', port, user + "@" + host, 'rm', '-f', filePath]
+        process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        stdOut, stdErr = process.communicate()
+        rc = process.returncode
+        if (rc == 0):
+            e_success()
+        else:
+            e_error()
+        
+        return True

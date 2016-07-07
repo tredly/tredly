@@ -1,4 +1,8 @@
-export ZFSBOOT_DISKS=ada0
+export DISTRIBUTIONS="base.txz kernel.txz lib32.txz"
+export BSDINSTALL_CONFIGCURRENT="yes"
+export BSDINSTALL_DISTDIR="/usr/freebsd-dist/"
+export BSDINSTALL_CHROOT="/mnt"
+export VAR_NONINTERACTIVE="NO"
 
 export ZFSBOOT_DATASETS="
     # DATASET           OPTIONS (comma or space separated; or both)
@@ -38,39 +42,52 @@ export ZFSBOOT_DATASETS="
     /tredly/ptn                             mountpoint=/tredly/ptn
 
     # set up the releases datasets so that tredly init runs correctly during install
-    /tredly/downloads/10.3-RELEASE          mountpoint=/tredly/downloads/10.3-RELEASE
-    /tredly/releases/10.3-RELEASE           mountpoint=/tredly/releases/10.3-RELEASE
-    
+    /tredly/downloads/10.3-RELEASE mountpoint=/tredly/downloads/10.3-RELEASE
+    /tredly/releases/10.3-RELEASE mountpoint=/tredly/releases/10.3-RELEASE
+
     # set up the default partition
     /tredly/ptn/default                     mountpoint=/tredly/ptn/default
     /tredly/ptn/default/cntr                mountpoint=/tredly/ptn/default/cntr
     /tredly/ptn/default/data                mountpoint=/tredly/ptn/default/data
     /tredly/ptn/default/log                 mountpoint=/tredly/ptn/default/log
     /tredly/ptn/default/psnt                mountpoint=/tredly/ptn/default/psnt
-    /tredly/ptn/default/remotecontainers    mountpoint=/tredly/ptn/default/remotecontainers
+    /tredly/ptn/default/remotecontainers mountpoint=/tredly/ptn/default/remotecontainers
 "
+export ZFSBOOT_BEROOT_NAME=ROOT
+export ZFSBOOT_BOOTFS_NAME=default
+export ZFSINTERACTIVE=true
 
-export DISTRIBUTIONS="base.txz kernel-tredly.txz lib32.txz ports.txz"
+bsdinstall keymap
+bsdinstall hostname
+bsdinstall zfsboot
+bsdinstall mount
+bsdinstall checksum
+bsdinstall distextract
+bsdinstall rootpass
+
+# set root to use bash shell. Bash shell does not exist yet so redirect stderr to null
+chroot $BSDINSTALL_CHROOT /usr/sbin/pw usermod root -s /usr/local/bin/bash 2>/dev/null
+
+echo ""
+echo ""
+
+# set up tredly user and password with bash shell
+echo "Setting up tredly user"
+chroot $BSDINSTALL_CHROOT /usr/sbin/pw useradd -n tredly -s /usr/local/bin/bash -m -G wheel 2> /dev/null
+chroot $BSDINSTALL_CHROOT passwd tredly
+bsdinstall config
+bsdinstall netconfig
+
+echo "Copying FreeBSD files for Tredly installation"
+mkdir -p $BSDINSTALL_CHROOT/tmp/tredlyfiles/bsd
+cp -R /usr/freebsd-dist/* $BSDINSTALL_CHROOT/tmp/tredlyfiles/bsd
+
 
 #!/bin/sh
+# the following script is run in the chrooted environment
 
 # export an environment variable to indicate this is an ISO installer
 export TREDLYISOINSTALLER="true"
-
-# work out which interface to set up for network install
-iface=""
-for interface in bge0 igb0 em0
-do
-    ifexists=`ifconfig $interface`
-    if [ "$ifexists" != "" ]
-    then
-        iface=$interface
-        break
-    fi
-done
-
-# get an ip address
-dhclient $iface
 
 # set nameservers
 {
@@ -84,14 +101,20 @@ hostname tredly
 # set up bash fdesc in fstab
 echo "fdesc                   /dev/fd fdescfs rw              0       0" >> /etc/fstab
 
+# set the path
+export PATH="${PATH}:/usr/local/bin:/usr/local/sbin"
+
 echo "Installing Tredly"
 env ASSUME_ALWAYS_YES=YES pkg bootstrap
 env ASSUME_ALWAYS_YES=YES pkg install -y git bash
+
 mkdir -p /tredlyinstall
 /usr/local/bin/git clone https://github.com/tredly/tredly.git /tredlyinstall
+#/usr/local/bin/git clone https://github.com/vuid-com/tredly.git -b integration /tredlyinstall
 /tredlyinstall/install.sh
 
-# clean up the install directory
+# clean up the install directories
+rm -rf /tmp/tredlyfiles
 rm -rf /tredlyinstall
 
 # set MOTD
@@ -100,10 +123,10 @@ mv /etc/motd /etc/motd-backup
 cat << MOTD > /etc/motd
  ___________ ___________ _   __   __
 |_   _| ___ \  ___|  _  \ |  \ \ / /
-  | | | |_/ / |__ | | | | |   \ V / 
-  | | |    /|  __|| | | | |    \ /  
-  | | | |\ \| |___| |/ /| |____| |  
-  \_/ \_| \_\____/|___/ \_____/\_/  
+  | | | |_/ / |__ | | | | |   \ V /
+  | | |    /|  __|| | | | |    \ /
+  | | | |\ \| |___| |/ /| |____| |
+  \_/ \_| \_\____/|___/ \_____/\_/
                Based on FreeBSD
                www.tredly.com
 

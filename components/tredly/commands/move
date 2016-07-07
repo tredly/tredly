@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+# commands require running as root
+cmn_assert_running_as_root
+
+show_help "Available Commands:
+    container
+    ---------
+    Description:
+        Moves a container to another host.
+        The final argument is similar to a SSH/SCP command, except the format is <username>@<host/ip>:<ssh port>
+
+    Examples:
+        $(basename "$0") move container xYH2KnI8 root@192.168.0.22:65222
+"
+
+case "${_SUBCOMMANDS[0]}" in
+    container)
+        tredly-host move ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+    ;;
+    *)
+        exit_with_error "Unknown move command \"${_SUBCOMMANDS[0]}\""
+    ;;
+esac

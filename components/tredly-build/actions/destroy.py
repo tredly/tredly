@@ -78,7 +78,7 @@ class ActionDestroy:
             e_warning("Container does not have an IP address")
         
         # run through the stop process
-        container.stop()
+        container.stop(True)
     
         # destroy the container
         destroyResult = container.destroy()

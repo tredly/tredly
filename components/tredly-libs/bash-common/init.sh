@@ -4,7 +4,7 @@
 function init_environment() {
     # can be a local path or URL
     local _filesLocation="${1}"
-    
+
     e_header "Setting up the Tredly environment..."
 
     # initialise zfs
@@ -43,13 +43,13 @@ function init_environment() {
         # we only have 1 so use it by default
         _release="${RELEASES_SUPPORTED[0]}"
     fi
-    
-    # if files location wasnt set then set to FreeBSD URL
-    if [[ -z "${_filesLocation}" ]]; then
-        _filesLocation="https://download.freebsd.org/ftp/releases/amd64/${_release}"
-    else 
+
+    # if files location was set then check if its a directory otehrwise set to FreeBSD URL
+    if [[ -d "${_filesLocation}" ]]; then
         # trim the trailing slash
         _filesLocation=$( rtrim "${_filesLocation}" '/' )
+    else
+        _filesLocation="https://download.freebsd.org/ftp/releases/amd64/${_release}"
     fi
 
     # set up the zfs directories/datasets
@@ -159,7 +159,7 @@ function init_environment() {
     # get the default release
     local _defaultRelease=$( zfs_get_property "${ZFS_TREDLY_DATASET}" "${ZFS_PROP_ROOT}:default_release_name" )
     # if its unset, then set this as the default
-    if [[ "${_defaultRelease}" == '-' ]]; then
+    if [[ "${_defaultRelease}" == '-' ]] || [[ -z "${_defaultRelease}" ]]; then
         set_default_release "${_release}"
     else
         e_note "If you wish to use this release by default, then please run \"tredly modify defaultRelease\""

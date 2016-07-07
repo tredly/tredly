@@ -141,6 +141,12 @@
                 ]
             }
         },
+        "arrayOfExecOperationsOnly": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/operationExec"
+            }
+        },
         "uriProtocolHttps": {
             "type": "string",
             "pattern": "^https:\\/\\/"
@@ -523,13 +529,16 @@
                     "additionalProperties": false,
                     "properties": {
                         "onStart": {
-                            "$ref": "#/definitions/arrayOfOperations"
+                            "$ref": "#/definitions/arrayOfExecOperationsOnly"
                         },
                         "onStop": {
-                            "$ref": "#/definitions/arrayOfOperations"
+                            "$ref": "#/definitions/arrayOfExecOperationsOnly"
                         },
                         "onCreate": {
                             "$ref": "#/definitions/arrayOfOperations"
+                        },
+                        "onDestroy": {
+                            "$ref": "#/definitions/arrayOfExecOperationsOnly"
                         }
                     }
                 }

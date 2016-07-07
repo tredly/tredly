@@ -26,7 +26,7 @@ function container_console() {
     local _uuid
 
     if [[ -z "${_input}" ]]; then
-        exit_with_error "Please enter a Name|UUID."
+        exit_with_error "Please enter a UUID."
     fi
 
     # work out whether this is a containerName or a uuid, and get the uuid if necessary

@@ -20,6 +20,14 @@ for f in ${_DIR}/../tredly-libs/bash-install/*.sh; do source ${f}; done
 # make sure this script is running as root
 cmn_assert_running_as_root
 
+# check if there are runnign containers
+_containerCount=$( zfs_get_all_containers | wc -l )
+_containerCount=$( ltrim "${_containerCount}" )
+
+if [[ ${_containerCount} -gt 0 ]]; then
+    exit_with_error "${_containerCount} Tredly container(s) found. Please destroy all containers before attempting to upgrade."
+fi
+
 # get a list of external interfaces
 IFS=$'\n' declare -a _externalInterfaces=($( get_external_interfaces ))
 
@@ -30,7 +38,7 @@ _vimageInstalled=$( sysctl kern.conftxt | grep '^options[[:space:]]VIMAGE$' | wc
 _epochTime=$( date +%s )
 
 ###############################
-declare -a _configOptions
+declare -A _configOptions
 
 # path to installer config
 _TREDLY_DIR_CONF="${_DIR}/../../conf"
@@ -45,74 +53,78 @@ common_conf_parse "install"
 # ensure required fields are set
 common_conf_validate "enableSSHD,enableAPI,enableCommandCenter,commandCenterURL,tredlyApiGit,tredlyApiBranch,tredlyCCGit,tredlyCCBranch,downloadKernelSource"
 
-_configOptions[0]=''
 # check if some values are set, and if they arent then consult the host for the details
 if [[ -z "${_CONF_COMMON[externalInterface]}" ]]; then
-    _configOptions[1]="${_externalInterfaces[0]}"
+    _configOptions[externalInterface]="${_externalInterfaces[0]}"
 else
-    _configOptions[1]="${_CONF_COMMON[externalInterface]}"
+    _configOptions[externalInterface]="${_CONF_COMMON[externalInterface]}"
 fi
 
 if [[ -z "${_CONF_COMMON[externalIP]}" ]]; then
-    _configOptions[2]="$( getInterfaceIP "${_externalInterfaces[0]}" )/$( getInterfaceCIDR "${_externalInterfaces[0]}" )"
+    _configOptions[externalIP]="$( getInterfaceIP "${_externalInterfaces[0]}" )/$( getInterfaceCIDR "${_externalInterfaces[0]}" )"
 else
-    _configOptions[2]="${_CONF_COMMON[externalIP]}"
+    _configOptions[externalIP]="${_CONF_COMMON[externalIP]}"
 fi
 
 if [[ -z "${_CONF_COMMON[externalGateway]}" ]]; then
-    _configOptions[3]="$( getDefaultGateway )"
+    _configOptions[externalGateway]="$( getDefaultGateway )"
 else
-    _configOptions[3]="${_CONF_COMMON[externalGateway]}"
+    _configOptions[externalGateway]="${_CONF_COMMON[externalGateway]}"
 fi
 
 if [[ -z "${_CONF_COMMON[hostname]}" ]]; then
-    _configOptions[4]="${HOSTNAME}"
+    _configOptions[hostname]="${HOSTNAME}"
 else
-    _configOptions[4]="${_CONF_COMMON[hostname]}"
+    _configOptions[hostname]="${_CONF_COMMON[hostname]}"
 fi
 
 if [[ -z "${_CONF_COMMON[containerSubnet]}" ]]; then
-    _configOptions[5]="10.99.0.0/16"
+    _configOptions[containerSubnet]="10.99.0.0/16"
 else
-    _configOptions[5]="${_CONF_COMMON[containerSubnet]}"
+    _configOptions[containerSubnet]="${_CONF_COMMON[containerSubnet]}"
 fi
 
 if [[ -z "${_CONF_COMMON[apiWhitelist]}" ]]; then
-    _configOptions[6]=""
+    _configOptions[apiWhitelist]=""
 else
-    _configOptions[6]="${_CONF_COMMON[apiWhitelist]}"
+    _configOptions[apiWhitelist]="${_CONF_COMMON[apiWhitelist]}"
 fi
 if [[ -z "${_CONF_COMMON[commandCenterURL]}" ]]; then
-    _configOptions[7]=""
+    _configOptions[commandCenterURL]=""
 else
-    _configOptions[7]="${_CONF_COMMON[commandCenterURL]}"
+    _configOptions[commandCenterURL]="${_CONF_COMMON[commandCenterURL]}"
+fi
+if [[ -z "${_CONF_COMMON[commandCenterWhitelist]}" ]]; then
+    _configOptions[commandCenterWhitelist]=""
+else
+    _configOptions[commandCenterWhitelist]="${_CONF_COMMON[commandCenterWhitelist]}"
 fi
 
 # Root user password
 if [[ -z "${_CONF_COMMON[rootUserPassword]}" ]]; then
-    _configOptions[8]="tredly"
+    _configOptions[rootUserPassword]="tredly"
 else
-    _configOptions[8]="${_CONF_COMMON[rootUserPassword]}"
+    _configOptions[rootUserPassword]="${_CONF_COMMON[rootUserPassword]}"
 fi
 
 # Tredly user password
 if [[ -z "${_CONF_COMMON[tredlyUserPassword]}" ]]; then
-    _configOptions[9]="tredly"
+    _configOptions[tredlyUserPassword]="tredly"
 else
-    _configOptions[9]="${_CONF_COMMON[tredlyUserPassword]}"
+    _configOptions[tredlyUserPassword]="${_CONF_COMMON[tredlyUserPassword]}"
 fi
 
 # Tredly API password
 if [[ -z "${_CONF_COMMON[tredlyApiPassword]}" ]]; then
-    _configOptions[10]="tredly"
+    _configOptions[tredlyApiPassword]="tredly"
 else
-    _configOptions[10]="${_CONF_COMMON[tredlyApiPassword]}"
+    _configOptions[tredlyApiPassword]="${_CONF_COMMON[tredlyApiPassword]}"
 fi
 
 # check for a dhcp leases file for this interface
-#if [[ -f "/var/db/dhclient.leases.${_configOptions[1]}" ]]; then
+#if [[ -f "/var/db/dhclient.leases.${_configOptions[externalIP]}" ]]; then
     # look for its current ip address within the leases file
-    #_numLeases=$( grep -E "${DEFAULT_EXT_IP}" "/var/db/dhclient.leases.${_configOptions[1]}" | wc -l )
+    #_numLeases=$( grep -E "${DEFAULT_EXT_IP}" "/var/db/dhclient.leases.${_configOptions[externalIP]}" | wc -l )
 
     #if [[ ${_numLeases} -gt 0 ]]; then
         # found a current lease for this ip address so throw a warning
@@ -130,8 +142,8 @@ if [[ "${_CONF_COMMON[unattendedInstall]}" != "yes" ]]; then
 fi
 
 # extract the net and cidr from the container subnet we are using
-CONTAINER_SUBNET_NET="$( lcut "${_configOptions[5]}" '/')"
-CONTAINER_SUBNET_CIDR="$( rcut "${_configOptions[5]}" '/')"
+CONTAINER_SUBNET_NET="$( lcut "${_configOptions[containerSubnet]}" '/')"
+CONTAINER_SUBNET_CIDR="$( rcut "${_configOptions[containerSubnet]}" '/')"
 # Get the default host ip address on the private container network
 _hostPrivateIP=$( get_last_usable_ip4_in_network "${CONTAINER_SUBNET_NET}" "${CONTAINER_SUBNET_CIDR}" )
 
@@ -139,49 +151,21 @@ _hostPrivateIP=$( get_last_usable_ip4_in_network "${CONTAINER_SUBNET_NET}" "${CO
 e_header "Tredly Installation"
 
 ##########
-e_note "Configuring users"
-_exitCode=0
-# set root password and bash shell
-echo "${_configOptions[8]}" | /usr/sbin/pw usermod root -s /usr/local/bin/bash -h 0
-_exitCode=$(( ${_exitCode} & $? ))
-
-# set up tredly user and password with bash shell
-# check if user exists
-id tredly > /dev/null 2>&1
-if [[ $? -eq 0 ]]; then
-    # user exists, so change password
-    echo "${_configOptions[9]}" | /usr/sbin/pw usermod tredly -s /usr/local/bin/bash -h 0
-    _exitCode=$(( ${_exitCode} & $? ))
-else
-    # user doesnt exist, so create user
-    echo "${_configOptions[9]}" | /usr/sbin/pw useradd -n tredly -s /usr/local/bin/bash -m -h 0
-    _exitCode=$(( ${_exitCode} & $? ))
-fi
-
-# add tredly user to wheel group for su access
-pw groupmod wheel -m tredly
-_exitCode=$(( ${_exitCode} & $? ))
-
-if [[ $? -eq 0 ]]; then
-    e_success "Success"
-else
-    e_error "Failed"
-fi
-
-##########
 
 # Configure /etc/rc.conf
 e_note "Configuring /etc/rc.conf"
 _exitCode=0
+
 # rename the existing rc.conf if it exists
 if [[ -f "/etc/rc.conf" ]]; then
     mv /etc/rc.conf /etc/rc.conf.${_epochTime}
 fi
+
 _exitCode=$(( ${_exitCode} & $? ))
 cp ${_DIR}/os/etc/rc.conf /etc/
 _exitCode=$(( ${_exitCode} & $? ))
 # change the network information in rc.conf
-sed -i '' "s|ifconfig_bridge0=.*|ifconfig_bridge0=\"addm ${_configOptions[1]} up\"|g" "/etc/rc.conf"
+sed -i '' "s|ifconfig_bridge0=.*|ifconfig_bridge0=\"addm ${_configOptions[externalInterface]} up\"|g" "/etc/rc.conf"
 _exitCode=$(( ${_exitCode} & $? ))
 if [[ $? -eq 0 ]]; then
     e_success "Success"
@@ -318,18 +302,18 @@ if [[ $( str_to_lower "${_CONF_COMMON[enableSSHD]}") == 'yes' ]]; then
         mv /etc/ssh/sshd_config /etc/ssh/sshd_config.${_epochTime}
         _exitCode=$(( ${_exitCode} & $? ))
     fi
-    
+
     cp ${_DIR}/os/etc/ssh/sshd_config /etc/ssh/sshd_config
     _exitCode=$(( ${_exitCode} & $? ))
-    
+
     # change the networking data for ssh
-    sed -i '' "s|ListenAddress .*|ListenAddress ${_configOptions[2]}|g" "/etc/ssh/sshd_config"
+    sed -i '' "s|ListenAddress .*|ListenAddress ${_configOptions[externalIP]}|g" "/etc/ssh/sshd_config"
     _exitCode=$(( ${_exitCode} & $? ))
-    
+
     # enable it in rc.conf
     echo 'sshd_enable="YES"' >> /etc/rc.conf
     _exitCode=$(( ${_exitCode} & $? ))
-    
+
     if [[ ${_exitCode} -eq 0 ]]; then
         e_success "Success"
     else
@@ -598,17 +582,19 @@ else
 fi
 
 _filesLocation=''
-# if we're installing from the ISO then use the ISO files
-if [[ "${TREDLYISOINSTALLER}" == "true" ]]; then
-    _filesLocation="/usr/freebsd-dist"
-fi
 
 if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
     read -p "press any key to continue" confirm
 fi
 
 # initialise tredly
-/usr/local/sbin/tredly init
+if [[ "${TREDLYISOINSTALLER}" == 'true' ]]; then
+    # iso installer so retrieve files from /tmp/tredlyfiles/bsd
+    /usr/local/sbin/tredly init "/tmp/tredlyfiles/bsd"
+else
+    /usr/local/sbin/tredly init
+fi
+
 
 if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
     read -p "press any key to continue" confirm
@@ -628,18 +614,18 @@ if [[ $( str_to_lower "${_CONF_COMMON[enableAPI]}") == 'yes' ]]; then
         echo "Cleaning previously downloaded Tredly-API"
         rm -rf /tmp/tredly-api
     fi
-    
+
     while [[ ${_exitCode} -ne 0 ]]; do
         /usr/local/bin/git clone -b "${_CONF_COMMON[tredlyApiBranch]}" "${_CONF_COMMON[tredlyApiGit]}"
         _exitCode=$?
     done
-    
+
     cd /tmp/tredly-api
-    
+
     # install the API and extract the random password so we can present this to the user at the end of install
-    echo "${_configOptions[10]}" | ./install.sh
+    echo "${_configOptions[tredlyApiPassword]}" | ./install.sh
     #apiPassword="$( ./install.sh | grep "^Your API password is: " | cut -d':' -f 2 | sed -e 's/^[ \t]*//' )"
-    
+
     if [[ ${PIPESTATUS[0]} -eq 0 ]]; then
         e_success "Success"
     else
@@ -672,10 +658,39 @@ if [[ $( str_to_lower "${_CONF_COMMON[enableCommandCenter]}") == 'yes' ]]; then
     done
 
     cd /tmp/tredly-cc
-    
+
+    # add whitelist data to tredlyfile
+    if [[ -n "${_configOptions[commandCenterWhitelist]}" ]]; then
+        e_note "Adding whitelist to Tredly Command Center"
+        # turn it into json style string
+        jsonString=''
+        # turn the string into an array
+        IFS=',' read -ra _ccWhitelistArray <<< "${_configOptions[commandCenterWhitelist]}"
+
+        # loop over values
+        for _ip4wl in ${_ccWhitelistArray[@]}; do
+            # add a comma if theres already data
+            if [[ -n "${jsonString}" ]]; then
+                jsonString="${jsonString},"
+            fi
+
+            jsonString="${jsonString}\"${_ip4wl}\""
+        done
+
+        # replace the line in the tredlyfile
+        $( replace_line_in_file "ipv4Whitelist: \[\]" "ipv4Whitelist: [${jsonString}]" "./tredly.yaml")
+
+        if [[ $? -eq 0 ]]; then
+            e_success "Success"
+        else
+            e_error "Failed"
+        fi
+    fi
+
+
     # install the Command Center using the url we were given
-    ./install.sh "${_configOptions[7]}"
-    
+    ./install.sh "${_configOptions[commandCenterURL]}"
+
     if [[ $? -eq 0 ]]; then
         e_success "Success"
     else
@@ -715,20 +730,20 @@ else
     # fetch the source if the user said yes or the source doesnt exist
     if [[ "$( str_to_lower "${_CONF_COMMON[downloadKernelSource]}" )" == 'yes' ]] || [[ ! -d '/usr/src/sys' ]]; then
         _thisRelease=$( sysctl -n kern.osrelease | cut -d '-' -f 1 -f 2 )
-        
+
         # download manifest file to validate src.txz
         fetch https://download.freebsd.org/ftp/releases/amd64/${_thisRelease}/MANIFEST -o /tmp
-        
+
         # if we have downlaoded src.txz for tredly then use that
         if [[ -f /tredly/downloads/${_thisRelease}/src.txz ]]; then
             e_note "Copying pre-downloaded src.txz"
-            
+
             cp /tredly/downloads/${_thisRelease}/src.txz /tmp
         else
             # otherwise download the src file
             fetch https://download.freebsd.org/ftp/releases/amd64/${_thisRelease}/src.txz -o /tmp
         fi
-        
+
         # validate src.txz against MANIFEST
         _upstreamHash=$( cat /tmp/MANIFEST | grep ^src.txz | awk -F" " '{ print $2 }' )
         _localHash=$( sha256 -q /tmp/src.txz )
@@ -741,7 +756,7 @@ else
         else
             e_success "Validation passed for src.txz"
         fi
-        
+
         if [[ $? -ne 0 ]]; then
             exit_with_error "Failed to download src.txz"
         fi
@@ -758,9 +773,9 @@ else
             exit_with_error "Failed to unpack src.txz"
         fi
     fi
-    
+
     cd /usr/src
-    
+
     # clean up any previously failed builds
     if [[ $( ls -1 /usr/obj | wc -l ) -gt 0 ]]; then
         e_note "Cleaning previously compiled Kernel"
@@ -790,7 +805,7 @@ else
     if [[ $? -eq 0 ]]; then
         e_note "Installing New Kernel"
         make installkernel KERNCONF=TREDLY >> "${_KERNELCOMPILELOG}"
-        
+
         if [[ $? -ne 0 ]]; then
             exit_with_error "Failed to install kernel"
         fi
@@ -810,34 +825,38 @@ fi
 ##########
 
 # use tredly to set network details
-/usr/local/sbin/tredly config host network "${_configOptions[1]}" "${_configOptions[2]}" "${_configOptions[3]}"
+/usr/local/sbin/tredly config host network "${_configOptions[externalInterface]}" "${_configOptions[externalIP]}" "${_configOptions[externalGateway]}"
 if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
     read -p "press any key to continue" confirm
 fi
-/usr/local/sbin/tredly config host hostname "${_configOptions[4]}"
+/usr/local/sbin/tredly config host hostname "${_configOptions[hostname]}"
 if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
     read -p "press any key to continue" confirm
 fi
-/usr/local/sbin/tredly config container subnet "${_configOptions[5]}"
+/usr/local/sbin/tredly config container subnet "${_configOptions[containerSubnet]}"
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
+/usr/local/sbin/tredly config host DNS "8.8.8.8,8.8.4.4"
 if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
     read -p "press any key to continue" confirm
 fi
 
 # if whitelist was given to us then set it up
-if [[ -n "${_CONF_COMMON[apiWhitelist]}" ]]; then
+if [[ -n "${_configOptions[apiWhitelist]}" ]]; then
     e_note "Whitelisting IP addresses for API"
     # clear the whitelist in case of old entries
     /usr/local/sbin/tredly config api whitelist clear > /dev/null
-    
+
     declare -a _whitelistArray
-    IFS=',' read -ra _whitelistArray <<< "${_CONF_COMMON[apiWhitelist]}"
-    
+    IFS=',' read -ra _whitelistArray <<< "${_configOptions[apiWhitelist]}"
+
     _exitCode=0
     for ip in ${_whitelistArray[@]}; do
         /usr/local/sbin/tredly config api whitelist "${ip}" > /dev/null
         _exitCode=$(( ${_exitCode} & $? ))
     done
-    
+
     if [[ ${_exitCode} -eq 0 ]]; then
         e_success "Success"
     else
@@ -845,14 +864,34 @@ if [[ -n "${_CONF_COMMON[apiWhitelist]}" ]]; then
     fi
 fi
 
+# if this is a production install then clear the screen so that the only thing viewable is the install complete message
+if [[ "${_TREDLYINSTALLDEBUG}" != 'true' ]]; then
+    clear
+fi
+
 # echo out confirmation message to user
 e_header "Install Complete"
 echo -e "${_colourMagenta}"
-echo ""
-echo "To change your API password, please run the command 'tredly config api password'"
-echo "To whitelist addresses to access the API, please run the command 'tredly config api whitelist <ipaddr1>,<ipaddr2>'"
-echo "Please note that the SSH port has changed. Please use the following command to connect to your host after reboot:"
-echo "ssh -p 65222 tredly@$( lcut "${_configOptions[2]}" "/" )"
+# only display the api message if it was installed
+if [[ $( str_to_lower "${_CONF_COMMON[enableAPI]}") == 'yes' ]]; then
+    echo "To change your API password, please run the command 'tredly config api password'"
+    echo "To whitelist addresses to access the API, please run the command 'tredly config api whitelist <ipaddr1>,<ipaddr2>'"
+    echo ""
+fi
+
+# only display the ssh message if ssh was configured
+if [[ $( str_to_lower "${_CONF_COMMON[enableSSHD]}") == 'yes' ]]; then
+    echo "Please note that the SSH port has changed. Please use the following command to connect to your host after reboot:"
+    echo "ssh -p 65222 tredly@$( lcut "${_configOptions[externalIP]}" "/" )"
+    echo ""
+fi
+
+# display reboot message if kernel was recompiled
+if [[ ${_vimageInstalled} -eq 0 ]] && [[ -z "${TREDLYISOINSTALLER}" ]]; then
+    echo "VImage support has been compiled into your Kernel. Please reboot for this new Kernel to take effect."
+    echo ""
+fi
+
 echo -e "${_formatReset}"
 
 exit 0

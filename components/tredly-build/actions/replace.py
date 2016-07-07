@@ -170,7 +170,6 @@ class ActionReplace:
         
         # destroy the old container if it exists on this partition
         if (tredlyHost.containerExists(oldContainerUUID, partitionName)):
-
             # load the container from ZFS
             oldContainer = Container()
             
@@ -187,7 +186,7 @@ class ActionReplace:
             e_header("Destroying Container - " + oldContainer.name)
             
             # run through the stop process
-            oldContainer.stop()
+            oldContainer.stop(True)
     
             # destroy the container
             e_note("Destroying container " + str(oldContainer.name))

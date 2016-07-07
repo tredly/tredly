@@ -18,8 +18,8 @@ declare -a _SUBCOMMANDS
 declare -A _FLAGS
 
 # versioning
-_VERSIONNUMBER="1.0.3"
-_VERSIONDATE="June 30 2016"
+_VERSIONNUMBER="1.1.0"
+_VERSIONDATE="July 7 2016"
 
 _SHOW_HELP=false
 _ARGS=($@)

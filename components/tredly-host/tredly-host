@@ -59,7 +59,7 @@ SCRIPTNAME = os.path.basename(__file__)
 argParser = argparse.ArgumentParser(description=SCRIPTNAME)
 
 # set up arguments in argparser
-argParser.add_argument('action', help='init create destroy list modify replace')
+argParser.add_argument('action', nargs='?', help='init create destroy list modify replace')
 argParser.add_argument('subject', nargs='?', help='container etc')
 argParser.add_argument('target', nargs='?', help='partition etc')
 argParser.add_argument('identifier', nargs='?', help='identifier - uuid etc')

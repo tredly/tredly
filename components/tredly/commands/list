@@ -22,6 +22,14 @@ case "${_SUBCOMMANDS[0]}" in
         list_containers "${_SUBCOMMANDS[1]}" "${_SUBCOMMANDS[2]}"
 
     ;;
+    partition)
+        # validation
+        if [[ ${#_SUBCOMMANDS[@]} -gt 2 ]]; then
+            exit_with_error "Too many arguments received."
+        fi
+
+        partition_list "${_SUBCOMMANDS[1]}"
+    ;;
     partitions)
         # validation
         if [[ ${#_SUBCOMMANDS[@]} -gt 1 ]]; then

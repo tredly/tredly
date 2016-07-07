@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 
+# commands require running as root
+cmn_assert_running_as_root
+
 show_help "init -- Initialises the Tredly environment.
 "
+
 # set up the environment
-init_environment "${_SUBCOMMANDS[1]}"
+init_environment "${_SUBCOMMANDS[0]}"
