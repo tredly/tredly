@@ -1,7 +1,7 @@
 # Tredly
 
-- Version: v1.0.3
-- Date: June 30 2016
+- Version: v1.1.0
+- Date: July 7 2016
 - [Release notes](https://github.com/tredly/tredly/blob/master/CHANGELOG.md)
 - [GitHub repository](https://github.com/tredly/tredly)
 
@@ -38,6 +38,10 @@ To install Tredly, your server must be running **FreeBSD 10.3 (or above) as Root
 ```
 3. Finally run `./install.sh` to install.
 
+### Via ISO
+
+A full FreeBSD and Tredly installation ISO can be downloaded from <https://s3-us-west-2.amazonaws.com/tredly-isos/Tredly-1.0-RELEASE-amd64.iso>
+
 ## Configuration
 
 Tredly can be configured in a number of ways, depending on what you are trying to achieve. We recommend you read the Tredly docs at <http://www.tredly.com/docs/?docs=getting-started> to understand the options you can configure in Tredly.
@@ -52,7 +56,10 @@ You can download a number of container examples from **<https://github.com/tredl
 
 ## Extending Tredly
 
-Tredly already has the [Tredly API](https://github.com/tredly/tredly-api), which simplifies updating containers and improves scalability, and [Tredly CLI](https://github.com/tredly/tredly-cli), which provides remote access to a Tredly enabled host.
+Tredly already has a number of extensions:
+1. [Tredly API](https://github.com/tredly/tredly-api), which simplifies updating containers and improves scalability
+2. [Tredly CLI](https://github.com/tredly/tredly-cli), which provides remote CLI access to the tredly commands on a Tredly enabled host
+3. [Tredly Command Center](https://github.com/tredly/tredly-cc), which provides a web based GUI to manage your host
 
 ## Contributing
 

@@ -2,6 +2,35 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.1.0]
+#### Added
+- Tredly-build: Add "startepoch" array to ZFS for containers to track when they have been started & to facilitate the above oncreate command fix
+- Tredly-libs: Added ability to process yaml config files in configfile.py
+- Tredly-core: Added missing command "tredly list partition "
+- Tredly-host: Container move for containers without URLs implemented (EXPERIMENTAL)
+- Tredly-build: onstart and ondestroy commands implemented
+- Installer: Added option for commandcenter whitelist to menu and install.conf
+
+#### Changed
+- Isoinstaller: pull from github instead of using local files (no need to release a new iso with each point release)
+- Installer: removed hard coded values from rc.conf
+- Installer: Move tuneables to boot.conf from sysctl.conf
+- Installer: Copy base.txz etc from ISO to host to improve installation speed instead of downloading them again
+- Installer: removed option to set up users within the menu. Users are now set up on the ISO install only
+- Installer: menu option ordering has changed slightly
+- Installer: Clear the screen when showing final installation message on production installs
+- Tredly-build: json schema added onstart & ondestroy (only exec commands)
+- Tredly-libs: update configfile validation with a more descriptive error message
+
+#### Fixed
+- Installer: fix tredly kernel recompile
+- Installer: change renamed files to be .(epochtime) instead of .old (allows for archiving of user files)
+- Installer: if tredly user is already created then modify the user. otherwise create the user
+- Installer: don't reinstall if containers are currently running
+- Tredly-build: only run the oncreate commands/create the onstop script on first boot of container
+- Tredly-host: change variable name for function ip4_set_host_network to mitigate namespace issues
+- Tredly-core: fixed init from directory
+
 ## [1.0.3]
 #### Added
 - Added semaphore settings to loader.conf
