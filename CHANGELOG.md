@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.1.2]
+#### Fixed
+- Tredly-build- updated runCmd() to remove "sh -c" - fixes tredly/tredly#60
+
+#### Changed
+- Isoinstaller: use fetch instead of cp to copy files to the new ISO jail
+- Tredly-build: "Running onstart command" should actually be "running oncreate command"
+
 ## [1.1.1]
 #### Fixed
 - Installer/tredly-cc: Fixed incorrect location/branch of tredly-cc in install.conf

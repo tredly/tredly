@@ -7,6 +7,7 @@ import pwd
 from pprint import pprint
 import shutil
 from subprocess import Popen, PIPE
+import shlex
 from includes.util import *
 from includes.defines import *
 from includes.output import *
@@ -28,16 +29,16 @@ class Container:
         # pass values
         self.partitionName = partitionName
         self.releaseName = releaseName
-        
+
         # Declare defaults
         self.persistentStorageID = None
         self.persistentMountPoint = '/persistent'
         self.persistentDataset = None
-        
+
         self.name = None
         self.hostname = None
         self.group = None
-        self.publish = None 
+        self.publish = None
         self.ipv4Whitelist = []
         self.tcpInPorts = []             # list of tcpinports from tredlyfile
         self.tcpOutPorts = []            # list of tcpoutports from tredlyfile
@@ -56,7 +57,7 @@ class Container:
         self.maxHdd = None                  # maximum disk space available to container
         self.startOrder = None
         self.technicalOptions = []   # this might change to a dict
-    
+
         self.uuid = None                      # UUID of this container
         self.interfaces = []             # list of ip4addr objects
         self.nginxServernameFiles = {}        # a list of filenames (not full paths) of nginx server_name files associated with this container. Used for cleanup on destroy.
@@ -66,14 +67,14 @@ class Container:
         self.layer4ProxyUdp = []         # list of udp ports set up for layer 4 proxy
         self.dataset = None
         self.firewall = None                 # firewall object for this container
-        self.domainName = None              # domain part of FQDN 
+        self.domainName = None              # domain part of FQDN
         self.buildEpoch = None              # Time from epoch that container was built
         self.endEpoch = None                # Time since epoch that container finished building
 
         self.ip6 = None                     # the IP6 data
 
         self.allowQuotas = None            # Allows quotas to be applied on container filesystems.
-        self.mountPoint = None              
+        self.mountPoint = None
         self.onStopScript = None            # The location within the container of the script to run on stop
         self.onStartScript = None          # the location within the container of the script ot run on start
         self.onDestroyScript = None
@@ -98,7 +99,7 @@ class Container:
         self.allowMountNullfs = None      # Allows a container to mount nullfs filesystems.
         self.mountDevfs = None
         self.mountFdescfs = None
-        
+
         self.allowSocketAF = None         # Allows access to non standard (IP4, IP6, unix and route) protocol stacks within the container.
         self.execPrestart = None           # Script to run before starting container.
         self.execPoststart = None          # Script to run after starting container.
@@ -108,7 +109,7 @@ class Container:
         self.execTimeout = None            # Timeout to wait for a command to complete.
         self.execFib = None                # The FIB to use when running commands within a container.
         self.stopTimeout = None            # Timeout to wait for a container to stop.
-        
+
 
         self.ip4 = None
         self.ip4SaddrSel = None
@@ -119,21 +120,21 @@ class Container:
 
     # Action: populate this object with data from a tredlyfile
     #
-    # Pre: 
+    # Pre:
     # Post: this object has been updated with values from the tredlyfile
     #
-    # Params: 
+    # Params:
     #
     # Return: True if valid, False otherwise
     def loadFromTredlyfile(self):
         # populate from the Tredlyfile
         self.name = builtins.tredlyFile.json['container']['name']
         self.hostname = builtins.tredlyFile.json['container']['name']
-        
+
         # if the group is set then set it
         if ('group' in builtins.tredlyFile.json['container'].keys()):
             self.group = builtins.tredlyFile.json['container']['group']
-        
+
         self.publish = builtins.tredlyFile.json['container']['buildOptions']['publish']
         self.tcpInPorts = builtins.tredlyFile.json['container']['firewall']['allowPorts']['tcp']['in']
         self.tcpOutPorts = builtins.tredlyFile.json['container']['firewall']['allowPorts']['tcp']['out']
@@ -146,23 +147,23 @@ class Container:
         self.replicate = builtins.tredlyFile.json['container']['replicate']
         self.startOrder = builtins.tredlyFile.json['container']['startOrder']
         self.technicalOptions = builtins.tredlyFile.json['container']['technicalOptions']
-        
+
         # get the scripts
         try:
             self.onStart = builtins.tredlyFile.json['container']['operations']['onStart']
         except KeyError:
             self.onStart = []
-            
+
         try:
             self.onStop = builtins.tredlyFile.json['container']['operations']['onStop']
         except KeyError:
             self.onStop = []
-        
+
         try:
             self.onDestroy = builtins.tredlyFile.json['container']['operations']['onDestroy']
         except KeyError:
             self.onDestroy = []
-        
+
         # ignore the unlimited value as it is the same as none
         if (builtins.tredlyFile.json['container']['resourceLimits']['maxCpu'] == 'unlimited'):
             self.maxCpu = None
@@ -173,117 +174,117 @@ class Container:
             else:   # handle cores
                 # 1 core == 100% in rctl pcpu
                 maxCpu = int(builtins.tredlyFile.json['container']['resourceLimits']['maxCpu']) * 100
-            
+
             self.maxCpu = str(maxCpu)
-            
+
         if (builtins.tredlyFile.json['container']['resourceLimits']['maxRam'] == 'unlimited'):
             self.maxRam = None
         else:
             self.maxRam = builtins.tredlyFile.json['container']['resourceLimits']['maxRam']
-            
+
         if (builtins.tredlyFile.json['container']['resourceLimits']['maxHdd'] == 'unlimited'):
             self.maxHdd = None
         else:
             self.maxHdd = builtins.tredlyFile.json['container']['resourceLimits']['maxHdd']
-        
+
         # if dns in tredlyfile is empty then use the internal DNS
         if (len(builtins.tredlyFile.json['container']['customDNS']) == 0):
             self.dns = builtins.tredlyCommonConfig.dns
         else:
             self.dns = builtins.tredlyFile.json['container']['customDNS']
-        
+
         # domain name = partition name + tld
         self.domainName = self.partitionName + '.' + builtins.tredlyCommonConfig.tld
-        
+
         self.ip4 = CONTAINER_OPTIONS['ip4']
         self.ip4SaddrSel = CONTAINER_OPTIONS['ip4_saddrsel']
-        
+
         # Try to set some variables from the tredlyfile, if it isnt defined then use the default
         try:
             self.securelevel = str(builtins.tredlyFile.json['container']['technicalOptions']['securelevel'])
         except KeyError:
             self.securelevel = CONTAINER_OPTIONS['securelevel']
-            
+
         try:
             self.devfsRuleset = str(builtins.tredlyFile.json['container']['technicalOptions']['devfs_ruleset'])
         except KeyError:
             self.devfsRuleset = CONTAINER_OPTIONS['devfs_ruleset']
-            
+
         try:
             self.enforceStatfs = str(builtins.tredlyFile.json['container']['technicalOptions']['enforce_statfs'])
         except KeyError:
             self.enforceStatfs = CONTAINER_OPTIONS['enforce_statfs']
-        
+
         try:
             self.childrenMax = str(builtins.tredlyFile.json['container']['technicalOptions']['children.max'])
         except KeyError:
             self.childrenMax = CONTAINER_OPTIONS['children.max']
-            
+
         try:
             self.allowSetHostname = str(builtins.tredlyFile.json['container']['technicalOptions']['allow.set_hostname'])
         except KeyError:
             self.allowSetHostname = CONTAINER_OPTIONS['allow.set_hostname']
-            
+
         try:
             self.allowSysvipc = str(builtins.tredlyFile.json['container']['technicalOptions']['allow.sysvipc'])
         except KeyError:
             self.allowSysvipc = CONTAINER_OPTIONS['allow.sysvipc']
-            
+
         try:
             self.allowRawSockets = str(builtins.tredlyFile.json['container']['technicalOptions']['allow.raw_sockets'])
         except KeyError:
             self.allowRawSockets = CONTAINER_OPTIONS['allow.raw_sockets']
-            
+
         try:
             self.allowChflags = str(builtins.tredlyFile.json['container']['technicalOptions']['allow.chflags'])
         except KeyError:
             self.allowChflags = CONTAINER_OPTIONS['allow.chflags']
-            
+
         try:
             self.allowMount = str(builtins.tredlyFile.json['container']['technicalOptions']['allow.mount'])
         except KeyError:
             self.allowMount = CONTAINER_OPTIONS['allow.mount']
-            
+
         try:
             self.allowMountDevfs = str(builtins.tredlyFile.json['container']['technicalOptions']['allow.mount.devfs'])
         except KeyError:
             self.allowMountDevfs = CONTAINER_OPTIONS['allow.mount.devfs']
-            
+
         try:
             self.allowMountProcfs = str(builtins.tredlyFile.json['container']['technicalOptions']['allow.mount.procfs'])
         except KeyError:
             self.allowMountProcfs = CONTAINER_OPTIONS['allow.mount.procfs']
-            
+
         try:
             self.allowMountTmpfs = str(builtins.tredlyFile.json['container']['technicalOptions']['allow.mount.tmpfs'])
         except KeyError:
             self.allowMountTmpfs = CONTAINER_OPTIONS['allow.mount.tmpfs']
-            
+
         try:
             self.allowMountZfs = str(builtins.tredlyFile.json['container']['technicalOptions']['allow.mount.zfs'])
         except KeyError:
             self.allowMountZfs = CONTAINER_OPTIONS['allow.mount.zfs']
-            
+
         try:
             self.allowMountNullfs = str(builtins.tredlyFile.json['container']['technicalOptions']['allow.mount.nullfs'])
         except KeyError:
             self.allowMountNullfs = CONTAINER_OPTIONS['allow.mount.nullfs']
-        
+
         try:
             self.allowQuotas = str(builtins.tredlyFile.json['container']['technicalOptions']['allow.quotas'])
         except KeyError:
             self.allowQuotas = CONTAINER_OPTIONS['allow.quotas']
-            
+
         try:
             self.allowSocketAF = str(builtins.tredlyFile.json['container']['technicalOptions']['allow.socket_af'])
         except KeyError:
             self.allowSocketAF = CONTAINER_OPTIONS['allow.socket_af']
-        
+
         try:
             self.execPrestart = builtins.tredlyFile.json['container']['technicalOptions']['exec.prestart']
         except KeyError:
             self.execPrestart = CONTAINER_OPTIONS['exec.prestart']
-        
+
         try:
             self.execPoststart = builtins.tredlyFile.json['container']['technicalOptions']['exec.poststart']
         except KeyError:
@@ -293,7 +294,7 @@ class Container:
             self.execPrestop = builtins.tredlyFile.json['container']['technicalOptions']['exec.prestop']
         except KeyError:
             self.execPrestop = CONTAINER_OPTIONS['exec.prestop']
-        
+
         try:
             self.execStart = builtins.tredlyFile.json['container']['technicalOptions']['exec.start']
         except KeyError:
@@ -303,44 +304,44 @@ class Container:
             self.execStop = builtins.tredlyFile.json['container']['technicalOptions']['exec.stop']
         except KeyError:
             self.execStop = CONTAINER_OPTIONS['exec.stop']
-            
+
         try:
             self.execClean = builtins.tredlyFile.json['container']['technicalOptions']['exec.clean']
         except KeyError:
             self.execClean = CONTAINER_OPTIONS['exec.clean']
-            
+
         try:
             self.execTimeout = builtins.tredlyFile.json['container']['technicalOptions']['exec.timeout']
         except KeyError:
             self.execTimeout = CONTAINER_OPTIONS['exec.timeout']
-            
+
         try:
             self.execFib = builtins.tredlyFile.json['container']['technicalOptions']['exec.fib']
         except KeyError:
             self.execFib = CONTAINER_OPTIONS['exec.fib']
-        
+
         try:
             self.stopTimeout = builtins.tredlyFile.json['container']['technicalOptions']['stop.timeout']
         except KeyError:
             self.stopTimeout = CONTAINER_OPTIONS['stop.timeout']
-        
+
         try:
             self.mountDevfs = builtins.tredlyFile.json['container']['technicalOptions']['mount.devfs']
         except KeyError:
             self.mountDevfs = CONTAINER_OPTIONS['mount.devfs']
-        
+
         try:
             self.mountFdescfs = builtins.tredlyFile.json['container']['technicalOptions']['mount.fdescfs']
         except KeyError:
             self.mountFdescfs = CONTAINER_OPTIONS['mount.fdescfs']
-        
+
         # loop over the urls and remove any protocol from them
         for i, s in enumerate(self.urls):
             # check if it contains a protocol definition
             if ('://' in self.urls[i]['url']):
                 # strip the protocol from the url
                 self.urls[i]['url'] = self.urls[i]['url'].split('://', 1)[-1]
-        
+
         # add a http -> https redirect for each url if the url is https and one hasnt already been added
         for i, url in enumerate(self.urls):
             foundRedirect = False
@@ -350,11 +351,11 @@ class Container:
                 for redirect in url['redirects']:
                     if (redirect['url'] == 'http://' + url['url']):
                         foundRedirect = True
-                
+
                 # didnt find it so add an extra object in to handle http to https redirection
                 if (not foundRedirect):
                     self.urls[i]['redirects'].append({'cert': None, 'url': 'http://' + url['url']})
-        
+
         # if persistent storage was requested then set it
         if ('persistentStorage' in builtins.tredlyFile.json['container'].keys()):
             self.persistentStorageID = builtins.tredlyFile.json['container']['persistentStorage']['identifier']
@@ -365,16 +366,16 @@ class Container:
 
     # Action: Create a container within ZFS
     #
-    # Pre: 
+    # Pre:
     # Post: ZFS dataset for container has been created
     #
-    # Params: 
+    # Params:
     #
     # Return: True if succeeded, False otherwise
     def create(self):
         tredlyHost = TredlyHost()
-        
-        # ################# 
+
+        # #################
         # Pre flight checks
         # set up a set of certs to copy so we can validate that they exist, and then copy them in
         certsToCopy = set() # use a set for unique values
@@ -382,12 +383,12 @@ class Container:
             if (url['cert'] is not None):
                 # add to the list
                 certsToCopy.add(url['cert'])
-            
+
             # add any redirect certs too
             for redirect in url['redirects']:
                 if (redirect['cert'] is not None):
                     certsToCopy.add(redirect['cert'])
-        
+
         # make sure they exist
         for cert in certsToCopy:
             if (cert.startswith("partition/")):
@@ -398,7 +399,7 @@ class Container:
             else:
                 e_error("Invalid certificate definition " + cert)
                 return False
-        
+
             # check for server.crt and server.key
             if (not os.path.isfile(certPath + '/server.crt')):
                 e_error("Missing server.crt in " + certPath + ' for cert ' + cert)
@@ -406,31 +407,31 @@ class Container:
             if (not os.path.isfile(certPath + '/server.key')):
                 e_error("Missing server.key in " + certPath + ' for cert ' + cert)
                 return False
-        
+
         # End pre flight checks
         #################
-        
+
         # generate a UUID for this container
         containerExists = True
         while (containerExists):
             # generate a uuid
             uuid = generateShortUUID(8)
-            
+
             # check if it exists
             containerExists = tredlyHost.containerExists(uuid)
-        
+
         # found an individual uuid so assign it
         self.uuid = uuid
-        
+
         # get the start build time
         self.buildEpoch = int(time.time())
-        
+
         e_note("Creation started at " + time.strftime('%Y-%m-%d %H:%M:%S %z', time.localtime(self.buildEpoch)))
-        
+
         # set some useful vars for use throughout this function
         self.dataset = ZFS_TREDLY_PARTITIONS_DATASET + "/" + self.partitionName + "/" + TREDLY_CONTAINER_DIR_NAME + '/' + self.uuid
         self.mountPoint = TREDLY_PARTITIONS_MOUNT + "/" + self.partitionName + "/" + TREDLY_CONTAINER_DIR_NAME + '/' + self.uuid
-        
+
         # create container dataset
         zfsContainer = ZFSDataset(self.dataset, self.mountPoint)
 
@@ -438,12 +439,12 @@ class Container:
         if (not zfsContainer.create()):
             print("Failed to create container dataset " + self.dataset)
             return False
-        
+
         # mount it
         zfsContainer.mount()
-        
+
         zfsContainer.setProperty(ZFS_PROP_ROOT + ":buildepoch", str(self.buildEpoch))
-        
+
         # create log dir within container
         cmd = ['mkdir', '-p', self.mountPoint + "/" + TREDLY_CONTAINER_LOG_DIR]
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
@@ -453,7 +454,7 @@ class Container:
 
         # combine lists of directories to create
         createDirs = CONTAINER_CREATE_DIRS + CONTAINER_BASEDIRS
-        
+
         # set up some default directories
         for dir in createDirs:
             process = Popen(['mkdir', '-p', self.mountPoint + "/root" + dir],  stdin=PIPE, stdout=PIPE, stderr=PIPE)
@@ -461,7 +462,7 @@ class Container:
             rc = process.returncode
             if (rc != 0):
                 e_error("Failed to create container directory " + dir)
-                
+
         # and touch some files
         for file in CONTAINER_CREATE_FILES:
             cmd = ['touch', self.mountPoint + "/root" + file]
@@ -470,21 +471,21 @@ class Container:
             rc = process.returncode
             if (rc != 0):
                 e_error("Failed to create container file " + file)
-        
+
         # copy in some useful directories from the release
         for dir in CONTAINER_COPY_DIRS:
             cmd1 = ['find', "."]
             findCmd = Popen(cmd1, cwd=TREDLY_RELEASES_MOUNT + "/" + self.releaseName + "/root" + dir, stdout=PIPE)
-            
+
             cmd2= ['cpio', '-dp', '--quiet', self.mountPoint + "/root" + dir]
             cpioCmd = Popen(cmd2, cwd=TREDLY_RELEASES_MOUNT + "/" + self.releaseName + "/root" + dir, stdin=findCmd.stdout, stdout=PIPE)
             findCmd.stdout.close()
             stdOut, stdErr = cpioCmd.communicate()
             findCmd.wait()
-            
+
             if (findCmd.returncode != 0) or (cpioCmd.returncode != 0):
                 e_error("Failed to copy container directory " + dir)
-        
+
         # copy in some useful files from the host
         for file in CONTAINER_COPY_HOST_FILES:
             # copy in the file if it exists
@@ -505,7 +506,7 @@ class Container:
             print('firewall_enable="YES"', file=rc_conf)
             print('firewall_script="{}"'.format(IPFW_SCRIPT), file=rc_conf)
             print('firewall_logging="YES"', file=rc_conf)
-        
+
         # write resolv.conf
         with open(self.mountPoint + "/root/etc/resolv.conf", "w") as resolv_conf:
             # if the container has a FQDN then use the rest of it as a search domain
@@ -524,7 +525,7 @@ class Container:
 
         # register this objects values in zfs properties
         self.registerInZFS()
-        
+
         # Update the pkg database
         e_note("Updating package database")
         cmd = ['pkg', 'update']
@@ -537,7 +538,7 @@ class Container:
             # Success
             e_error("Failed")
             print(stdErr)
-        
+
         e_note("Updating container's pkg catalogue")
         cmd = ['cp', '/var/db/pkg/repo-FreeBSD.sqlite', self.mountPoint + "/root/var/db/pkg"]
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
@@ -549,19 +550,19 @@ class Container:
             # Success
             e_error("Failed")
             print(stdErr)
-        
+
         # loop over the urls and set up a set to copy from
         certsToCopy = set() # use a set for unique values
         for url in self.urls:
             if (url['cert'] is not None):
                 # add to the list
                 certsToCopy.add(url['cert'])
-            
+
             # add any redirect certs too
             for redirect in url['redirects']:
                 if (redirect['cert'] is not None):
                     certsToCopy.add(redirect['cert'])
-            
+
         # copy in all sslcerts listed in tredlyfile to the layer 7 proxy
         # certsToCopy was set at pre flight checks
         result = True
@@ -575,7 +576,7 @@ class Container:
                 # print a specific error if it failed
                 if (not result):
                     e_error("Failed to copy certificate " + cert)
-            
+
             if (result):
                 e_success("Success")
             else:
@@ -585,10 +586,10 @@ class Container:
 
     # Action: register all container variables in zfs properties
     #
-    # Pre: 
+    # Pre:
     # Post: container variables have been inserted to ZFS
     #
-    # Params: 
+    # Params:
     #
     # Return: True if succeeded, False otherwise
     def registerInZFS(self):
@@ -638,17 +639,17 @@ class Container:
         zfsContainer.setProperty(ZFS_PROP_ROOT + ":nginx_servername_dir", NGINX_SERVERNAME_DIR)
         zfsContainer.setProperty(ZFS_PROP_ROOT + ":nginx_upstream_dir", NGINX_UPSTREAM_DIR)
         zfsContainer.setProperty(ZFS_PROP_ROOT + ":releasename", self.releaseName)
-        
+
         # persistent storage
         if (self.persistentStorageID is not None):
             zfsContainer.setProperty(ZFS_PROP_ROOT + ":persistentstorageid", self.persistentStorageID)
             zfsContainer.setProperty(ZFS_PROP_ROOT + ":persistentmountpoint", self.persistentMountPoint)
             zfsContainer.setProperty(ZFS_PROP_ROOT + ":persistentdataset", self.persistentDataset)
-        
+
         # do the ZFS arrays
         for dns in self.dns:
             zfsContainer.appendArray(ZFS_PROP_ROOT + '.dns', dns)
-        
+
         # jsonify the urls individually and append to array
         for url in self.urls:
             # jsonify the url and minify it, then append to zfs array
@@ -673,24 +674,24 @@ class Container:
             else:
                 urlDomain = urlObj['url']
                 urlDirectory = '/'
-                
+
             # set up the filenames
             servernameFilename = protocol + '-' + nginxFormatFilename(urlDomain.rstrip('/'))
             upstreamFilename = protocol + '-' + nginxFormatFilename(urlObj['url'].rstrip('/'))
-            
+
             # register the URL in ZFS
             zfsContainer.appendArray(ZFS_PROP_ROOT + ".url", urlObj['url'])
-                
+
                 # if a cert was used then register that too
             if (sslCert is not None):
                 zfsContainer.appendArray(ZFS_PROP_ROOT + ".url_cert", urlObj['cert'].split('/')[-1])
-                
+
             # register the filenames in ZFS for destruction
             zfsContainer.appendArray(ZFS_PROP_ROOT + ".nginx_upstream", upstreamFilename)
             zfsContainer.appendArray(ZFS_PROP_ROOT + ".nginx_servername", servernameFilename)
 
             zfsContainer.appendArray(ZFS_PROP_ROOT + ".registered_dns_names", urlDomain)
-            
+
             for redirectFrom in urlObj['redirects']:
                 zfsContainer.appendArray(ZFS_PROP_ROOT + ".redirect_url", redirectFrom['url'])
 
@@ -709,7 +710,7 @@ class Container:
     def loadFromZFS(self, dataset):
         if (dataset is None):
             return False
-        
+
         self.dataset = dataset
         # get a handle to the dataset
         zfsContainer = ZFSDataset(self.dataset)
@@ -718,20 +719,20 @@ class Container:
         self.uuid = zfsContainer.getProperty(ZFS_PROP_ROOT + ":host_hostuuid")
         self.name = zfsContainer.getProperty(ZFS_PROP_ROOT + ":containername")
         self.group = zfsContainer.getProperty(ZFS_PROP_ROOT + ":containergroupname")
-        
+
         # if partition name cant be found then use the dataset
         if (zfsContainer.getProperty(ZFS_PROP_ROOT + ":partition") is not None):
             self.partitionName = zfsContainer.getProperty(ZFS_PROP_ROOT + ":partition")
         else:
              # extract the partition name from the dataset
             self.partitionName = self.dataset.split('/')[3]
-        
+
         self.mountPoint = zfsContainer.getProperty("mountpoint")
-        
+
         self.maxHdd = zfsContainer.getProperty(ZFS_PROP_ROOT + ":maxhdd")
         self.maxRam = zfsContainer.getProperty(ZFS_PROP_ROOT + ":maxram")
         self.maxCpu = zfsContainer.getProperty(ZFS_PROP_ROOT + ":maxcpu")
-        
+
         self.securelevel = zfsContainer.getProperty(ZFS_PROP_ROOT + ":securelevel")
         self.devfsRuleset = zfsContainer.getProperty(ZFS_PROP_ROOT + ":devfs_ruleset")
         self.enforceStatfs = zfsContainer.getProperty(ZFS_PROP_ROOT + ":enforce_statfs")
@@ -769,23 +770,23 @@ class Container:
         self.hostIface = zfsContainer.getProperty(ZFS_PROP_ROOT + ":host_iface")
         self.releaseName = zfsContainer.getProperty(ZFS_PROP_ROOT + ":releasename")
         self.hostname = self.name
-        
+
         # load the jsoned urls
         self.urls = zfsContainer.getJsonArray(ZFS_PROP_ROOT + ".jsonurls")
 
-        
+
         self.layer4ProxyTcp = zfsContainer.getArray(ZFS_PROP_ROOT + ".layer4proxytcp")
         self.layer4ProxyUdp = zfsContainer.getArray(ZFS_PROP_ROOT + ".layer4proxyudp")
-        
+
         # nginx dirs
         self.nginxUpstreamDir = zfsContainer.getProperty(ZFS_PROP_ROOT + ":nginx_upstream_dir")
         self.nginxServernameDir = zfsContainer.getProperty(ZFS_PROP_ROOT + ":nginx_servername_dir")
         self.nginxAccessfileDir = zfsContainer.getProperty(ZFS_PROP_ROOT + ":nginx_accessfile_dir")
-        
+
         # nginx files
         self.nginxUpstreamFiles = zfsContainer.getArray(ZFS_PROP_ROOT + ".nginx_upstream")
         self.nginxServernameFiles = zfsContainer.getArray(ZFS_PROP_ROOT + ".nginx_servername")
-        
+
         # registered dns names
         self.registeredDNSNames = zfsContainer.getArray(ZFS_PROP_ROOT + ".registered_dns_names")
 
@@ -802,20 +803,20 @@ class Container:
                 iface = NetInterface(m.group(1))
                 # add the ip address to this container interface
                 iface.ip4Addrs.append(IPv4Interface(m.group(2) + '/' + m.group(3)))
-    
+
                 # add the object to this objects interfaces
                 self.containerInterfaces.append(iface)
-        
+
         # set up a firewall object
         self.firewall = IPFW(self.mountPoint + "/root/usr/local/etc", self.uuid)
-        
+
         # read the rules in
         self.firewall.readRules()
-        
+
         # do some error checking
         if (self.name is None):
             self.name = "(unnamed)"
-        
+
         return True
 
     # Action: destroy this container
@@ -823,22 +824,22 @@ class Container:
     # Pre: container dataset exists, container may or may not be running
     # Post: container has been stopped and its zfs dataset destroyed
     #
-    # Params: 
+    # Params:
     #
     # Return: True if succeeded, False otherwise
     def destroy(self):
         if (self.dataset is None):
             return False
-        
+
         if (self.uuid is None):
             return False
-        
+
         # dont destroy a running container
         if (self.isRunning()):
             return False
-        
+
         tredlyHost = TredlyHost()
-        
+
         # get the certs
         zfsContainer = ZFSDataset(self.dataset, self.mountPoint)
         urlCerts = zfsContainer.getArray(ZFS_PROP_ROOT + ".url_cert")
@@ -846,28 +847,28 @@ class Container:
 
         # get a unique list of the cert names
         cleanUpCerts = list(urlCerts.values()) + list(set(redirectUrlCerts.values()) - set(urlCerts.values()))
-        
+
         # clean up containers certs
         if (len(cleanUpCerts) > 0):
             e_note("Cleaning up SSL Certificates")
             returnCode = True
             for cert in cleanUpCerts:
                 # check if this cert is in use by containers in this partition
-                
+
                 # check if any other containers are using this cert
                 zfsUrlCerts = tredlyHost.getContainersWithArray(ZFS_PROP_ROOT + '.url_cert', cert)
                 zfsRedirectUrlCerts = tredlyHost.getContainersWithArray(ZFS_PROP_ROOT + '.redirect_url_cert', cert)
-                
+
                 # remove our uuid from these lists
                 if (self.uuid in zfsUrlCerts):
                     zfsUrlCerts.remove(self.uuid)
                 if (self.uuid in zfsRedirectUrlCerts):
                     zfsRedirectUrlCerts.remove(self.uuid)
-                
+
                 # if nothing is using them then delete
                 if (len(zfsUrlCerts) == 0) and (len(zfsRedirectUrlCerts) == 0):
                     pathToCertDir = NGINX_SSL_DIR + '/' + self.partitionName + '/' + cert
-                    
+
                     # make sure ther are alphanumeric chars in the path so we aren't deleting /
                     if (re.search('[a-zA-Z]', pathToCertDir)):
                         # delete the directory and its contents
@@ -876,12 +877,12 @@ class Container:
                             returnCode = (returnCode and True)
                         except IOError:
                             returnCode = (returnCode and False)
-                            
+
                     # check if the directory is now empty, and if so, clean it up
                     if (len(os.listdir(NGINX_SSL_DIR + '/' + self.partitionName)) == 0):
                         # delete the directory
                         shutil.rmtree(NGINX_SSL_DIR + '/' + self.partitionName, ignore_errors=True)
-            
+
             if (returnCode):
                 e_success("Success")
             else:
@@ -906,7 +907,7 @@ class Container:
     def mountNullfs(self, mountFrom, mountTo, readMode = 'ro'):
         # prepend the full path to the container
         mountTo = self.mountPoint + '/root' + mountTo
-        
+
         # if the path to mount doesnt exist then fail
         if (not os.path.isdir(mountFrom)):
             return False
@@ -914,7 +915,7 @@ class Container:
         # if the path to mount to doesnt exist, create it
         if (not os.path.isdir(mountTo)):
             os.makedirs(mountTo)
-        
+
         params = ['mount', '-t', 'nullfs', '-o', readMode, mountFrom, mountTo]
         process = Popen(params,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
         stdOut, stdErr = process.communicate()
@@ -931,10 +932,10 @@ class Container:
     #
     # Return: True if succeeded, False otherwise
     def mountBaseDirs(self, releaseName = None):
-        
+
         if (releaseName is None) and (self.releaseName is None):
             e_error("No release name received - cannot mount directories")
-        
+
         if (releaseName is None):
             releaseName = self.releaseName
 
@@ -943,34 +944,34 @@ class Container:
             if (not self.mountNullfs(TREDLY_RELEASES_MOUNT + "/" + releaseName + "/root" + baseDir, baseDir)):
                 e_error("Failed to mount container base directory " + baseDir)
                 return False
-            
+
         return True
-    
+
     # Action: mount persistent storage
     #
     # Pre: container dataset exists
     # Post: persistent storage has been created if it doesnt exist, and mounted to container
     #
-    # Params: 
+    # Params:
     #
     # Return: True if succeeded, False otherwise
     def mountPersistentStorage(self):
         # set up the dataset location and mountpoint location
         zfsDataset = self.persistentDataset
         zfsMountPoint = TREDLY_PARTITIONS_MOUNT + '/' + self.partitionName + '/' + TREDLY_PERSISTENT_STORAGE_DIR_NAME + '/' + self.persistentStorageID
-        
+
         # get a zfs object to the persistent storage
         zfsPersist = ZFSDataset(zfsDataset, zfsMountPoint)
-        
+
         # create the dataset if it doesnt exist
         if (not zfsPersist.exists()):
             zfsPersist.create()
-        
+
         # if its not mounted then mount it
         if (not zfsPersist.isMounted()):
             if (not zfsPersist.mount()):
                 return False
-        
+
         # mount it as nullfs in the container and return the result
         return self.mountNullfs(zfsMountPoint, self.persistentMountPoint, 'rw')
 
@@ -979,7 +980,7 @@ class Container:
     # Pre: container dataset exists
     # Post: basedirs have been unmounted
     #
-    # Params: 
+    # Params:
     #
     # Return: True if succeeded, False otherwise
     def unmountBaseDirs(self):
@@ -996,9 +997,9 @@ class Container:
     # Action: check if this container has been started
     #
     # Pre: container dataset exists
-    # Post: 
+    # Post:
     #
-    # Params: 
+    # Params:
     #
     # Return: True if container running, False otherwise
     def isRunning(self):
@@ -1006,7 +1007,7 @@ class Container:
         cmd = ['jls', '-j', 'trd-' + self.uuid, 'jid']
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
         stdOut, stdErr = process.communicate()
-        
+
         return (process.returncode == 0)
 
 
@@ -1026,62 +1027,62 @@ class Container:
         tredlyHost = TredlyHost()
         ###################
         # Pre flight Checks
-        
+
         # refuse to start if already started
         if (self.isRunning()):
             return True
-        
+
         # check for none values and use defaults instead
         if (bridgeInterface is None):
             # put the container on the private network
             bridgeInterface = builtins.tredlyCommonConfig.lif
-            
+
         if (ip4 is None):
             # get an available ip address for this network
             ip4 = getAvailableIP4Address(builtins.tredlyCommonConfig.lifNetwork, builtins.tredlyCommonConfig.lifCIDR)
-            
+
         if (ip4Cidr is None):
             # use the default cidr
             ip4Cidr = builtins.tredlyCommonConfig.lifCIDR
-            
+
         if (ip6 is None):
             # set up ip6 address from ip4
             ip6 = ip4ToIP6(ip4)
-        
+
         if (ip6Cidr is None):
         # set up ip6 cidr based off ip4 cidr
             ip6Cidr = str(96 + int(ip4Cidr))
-        
+
         # End Pre flight checks
         ####################
-        
+
         # get an ip4 address object
         ip4Address = IPv4Interface(ip4 + '/' + ip4Cidr)
-        
+
         # get an ip6 address object
         ip6Address = IPv6Interface(ip6 + '/' + ip6Cidr)
-        
+
         # create container interface and generate a mac address for it
         containerInterface = NetInterface()
         containerInterface.generateMac()
-        
+
         # add the ip address to this container interface
         containerInterface.ip4Addrs.append(ip4Address)
         containerInterface.ip6Addrs.append(ip6Address)
-        
+
         # mount base dirs before starting
         self.mountBaseDirs()
-        
+
         # mount persistent storage
         if (self.persistentStorageID is not None) and (self.persistentMountPoint is not None):
             e_note("Mounting persistent storage " + self.persistentStorageID + ' at ' + self.persistentMountPoint)
-            
+
             # mount the persistent storage
             if (self.mountPersistentStorage()):
                 e_success()
             else:
                 e_error()
-        
+
         ## mount other filesystems for the container
         # devfs
         cmd = ['mount', '-t', 'devfs', 'devfs', self.mountPoint + '/root/dev']
@@ -1089,7 +1090,7 @@ class Container:
         stdOut, stdErr = process.communicate()
         if (process.returncode != 0):
             e_error("Failed to mount devfs")
-        
+
         # tmpfs
         cmd = ['mount', '-t', 'tmpfs', 'tmpfs', self.mountPoint + '/root/tmp']
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
@@ -1103,10 +1104,10 @@ class Container:
         stdOut, stdErr = process.communicate()
         if (process.returncode != 0):
             e_error("Failed to chmod /tmp")
-        
+
         # get a handle to ZFS properties
         zfsContainer = ZFSDataset(self.dataset, self.mountPoint)
-        
+
         # apply devfs rulesets
         cmd = ['devfs', '-m', self.mountPoint + '/root/dev', 'rule', '-s', self.devfsRuleset, 'applyset']
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE);
@@ -1114,7 +1115,7 @@ class Container:
         if (process.returncode != 0):
             e_error("Failed to apply devfs ruleset to container")
             print(cmd)
-        
+
         # set up a list to go into the command line
         startContainer = [
             "jail",
@@ -1157,7 +1158,7 @@ class Container:
             "exec.consolelog=" + self.mountPoint + "/" + TREDLY_CONTAINER_LOG_DIR + "/console",
             "persist"
         ]
-        
+
         # start the container
         process = Popen(startContainer,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
         stdOut, stdErr = process.communicate()
@@ -1167,7 +1168,7 @@ class Container:
             print(startContainer)
             print(stdErr)
             return False
-        
+
         # set up the vnet interface
         cmd = ["ifconfig", "epair", "create"]
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE);
@@ -1175,12 +1176,12 @@ class Container:
         if (process.returncode != 0):
             e_error("Failed to create epair for container")
             print(stdErr)
-            
+
         # strip the newline and assign this variable
         hostInterfaceName = stdOut.rstrip().decode(encoding='UTF-8')
         # swap the a at the end of the string to b
         containerInterface.name =  re.sub('a$', 'b', hostInterfaceName)
-        
+
         # ensure these interfaces exist
         if (not networkInterfaceExists(hostInterfaceName)):
             e_error("Cannot find host interface " + hostInterfaceName)
@@ -1190,21 +1191,21 @@ class Container:
         # generate our own mac addresses - vimage has problems with mac collisions
         self.hostInterface = NetInterface(hostInterfaceName)
         self.hostInterface.generateMac()
-        
+
         # set the mac addresses for host
         cmd = ["ifconfig", self.hostInterface.name, "ether", self.hostInterface.mac]
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE);
         stdOut, stdErr = process.communicate();
         if (process.returncode != 0):
             e_error("Failed to set host epair " + self.hostInterface.name + "mac address " + self.hostInterface.mac)
-            
+
         # set the mac address for container
         cmd = ["ifconfig", containerInterface.name, "ether", containerInterface.mac]
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE);
         stdOut, stdErr = process.communicate();
         if (process.returncode != 0):
             e_error("Failed to set host epair " + containerInterface.name + "mac address " + containerInterface.mac)
-        
+
         # attach container interface to the container
         cmd = ["ifconfig", containerInterface.name, "vnet", "trd-" + self.uuid]
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE);
@@ -1212,7 +1213,7 @@ class Container:
         if (process.returncode != 0):
             e_error("Failed to attach epair " + containerInterface.name + " to container trd-" + self.uuid)
             print(cmd)
-        
+
         # rename the container interface to something more meaningful
         cmd = ["jexec", "trd-" + self.uuid, "ifconfig", containerInterface.name, "name", VNET_CONTAINER_IFACE_NAME]
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE);
@@ -1220,31 +1221,31 @@ class Container:
         if (process.returncode != 0):
             e_error("Failed to rename container interface")
             print(cmd)
-        
+
         # change variable name since we just renamed it
         containerInterface.name = VNET_CONTAINER_IFACE_NAME
-        
+
         # link the host interface to the bridge
         cmd = ["ifconfig", bridgeInterface, "addm", self.hostInterface.name, "up"]
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE);
         stdOut, stdErr = process.communicate();
         if (process.returncode != 0):
             e_error("Failed to add host interface to bridge")
-        
+
         # indicate that this epair is paired with a container
         cmd = ["ifconfig", self.hostInterface.name, "description", "Connected to container " + self.uuid]
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE);
         stdOut, stdErr = process.communicate();
         if (process.returncode != 0):
             e_error("Failed to set description on host epair")
-            
+
         # bring the host interface up
         cmd = ["ifconfig", self.hostInterface.name, "up"]
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE);
         stdOut, stdErr = process.communicate();
         if (process.returncode != 0):
             e_error("Failed to bring host interface up")
-            
+
         # Set ip4 address
         cmd = ["jexec", "trd-" + self.uuid, "ifconfig", containerInterface.name, "inet", ip4 + "/" + ip4Cidr]
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE);
@@ -1252,7 +1253,7 @@ class Container:
         if (process.returncode != 0):
             e_error("Failed to set container ip address to " + ip4)
             print(cmd)
-            
+
         # Set ip6 address
         cmd = ["jexec", "trd-" + self.uuid, "ifconfig", containerInterface.name, "inet6", ip6 + "/" + ip6Cidr]
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE);
@@ -1260,32 +1261,32 @@ class Container:
         if (process.returncode != 0):
             e_error("Failed to set container ip address to " + ip4)
             print(cmd)
-        
+
         # append the container interface
         self.containerInterfaces.append(containerInterface)
-        
+
         e_note(self.name + " allocated IP " + ip4)
-        
+
         # set the ip4 address in zfs
         zfsContainer.setProperty(ZFS_PROP_ROOT + ":ip4_addr", bridgeInterface + "|" + ip4 + "/" + ip4Cidr)
-        
+
         # set the ip6 address in zfs
         zfsContainer.setProperty(ZFS_PROP_ROOT + ":ip6_addr", bridgeInterface + "|" + ip6 + "/" + ip6Cidr)
-        
+
         # and the interface names
         zfsContainer.setProperty(ZFS_PROP_ROOT + ":host_iface", self.hostInterface.name)
         zfsContainer.setProperty(ZFS_PROP_ROOT + ":container_iface", containerInterface.name)
-        
+
         # get a handle to the hosts ipfw setup
         hostFirewall = IPFW('/usr/local/etc')
         hostFirewall.readRules()
         # set up some further routing for containers
         if (bridgeInterface == builtins.tredlyCommonConfig.wif):
-            # this is a public container 
+            # this is a public container
 
             # get the wan iface's ip address
             wanIP = getInterfaceIP4(builtins.tredlyCommonConfig.wifPhysical)
-            
+
             # add a route to the private network
             cmd = ["jexec", "trd-" + self.uuid, "route", "add", "-net", builtins.tredlyCommonConfig.lifNetwork + "/" + builtins.tredlyCommonConfig.lifCIDR, wanIP]
             process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
@@ -1293,21 +1294,21 @@ class Container:
             if (process.returncode != 0):
                 e_error("Failed to add route from public to private network")
                 print(cmd)
-                
+
             # get the current default route
             f = os.popen("netstat -r4n | grep default | awk '{print $2}'" )
             defaultRoute = f.read()
-            
+
             # Add this ip address to the IPFW public ip table
             hostFirewall.appendTable(1, ip4)
             # Add the host's epair to the ipfw public epair table
             hostFirewall.appendTable(2, self.hostInterface.name)
-            
+
             hostFirewall.apply()
         else:
             # private container, default comes from config
             defaultRoute = builtins.tredlyCommonConfig.vnetDefaultRoute
-            
+
         # now set hte default route
         cmd = ["jexec", "trd-" + self.uuid, "route", "add", "default", defaultRoute]
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE);
@@ -1315,20 +1316,20 @@ class Container:
         if (process.returncode != 0):
             e_error("Failed to add default route")
             print(cmd)
-        
+
         # set resource limits
         self.applyResourceLimits()
-        
+
         # apply firewall rules
         e_note("Configuring firewall for " + self.name)
         if (self.addContainerFirewallRules()):
             e_success("Success")
         else:
             e_error("Failed")
-        
+
         # add a startepoch entry to ZFS
         zfsContainer.appendArray(ZFS_PROP_ROOT + '.startepoch', str(time.time()))
-        
+
         # get the start times back from ZFS
         startTimes = zfsContainer.getArray(ZFS_PROP_ROOT + '.startepoch')
 
@@ -1356,7 +1357,7 @@ class Container:
                 e_success()
             else:
                 e_error()
-                
+
             # create the onstop script
             e_note("Creating onDestroy script")
             self.onDestroyScript = '/etc/rc.ondestroy'
@@ -1366,7 +1367,7 @@ class Container:
                 e_success()
             else:
                 e_error()
-        
+
         # check if an onstart script is set and if so, run it
         if (self.onStartScript is not None):
             e_note("Running onStart script")
@@ -1374,65 +1375,65 @@ class Container:
                 e_success("Success")
             else:
                 e_error("Failed")
-        
+
         # set up the container's hostname in DNS
         e_note("Adding container to DNS")
-        
+
         # Set the container's hostname up in unbound
         unboundFile = UnboundFile(UNBOUND_CONFIG_DIR + "/" + unboundFormatFilename(self.domainName))
         # read contents
         unboundFile.read()
-        
+
         # only assign this hostname to the first interface
         if (unboundFile.append("local-data", self.hostname + '.' + self.domainName, "IN", "A", str(self.containerInterfaces[0].ip4Addrs[0].ip), self.uuid)):
             zfsContainer.appendArray(ZFS_PROP_ROOT + ".registered_dns_names", self.hostname + '.' + self.domainName)
-        
+
         # write out the file and show message to user
         if (unboundFile.write()):
             e_success("Success")
         else:
             e_error("Failed")
-        
+
         # set up layer 4 proxy if it was requested
         if (self.layer4Proxy):
             e_note("Configuring layer 4 Proxy (tcp/udp) for " + self.name)
-            
+
             if (self.registerLayer4Proxy()):
                 e_success("Success")
             else:
                 e_error("Failed")
-            
+
         # Update containergroup member firewall tables
         if (self.group is not None):
             e_note("Updating container group '" + self.group + "' firewall rules")
-            
+
             # get a list of containergroup uuids
             containerGroupMembers = tredlyHost.getContainerGroupContainerUUIDs(self.group, self.partitionName)
             # and containergroup ips
             containerGroupIps = tredlyHost.getContainerGroupContainerIps(self.group, self.partitionName)
-    
+
             success = True
-            
+
             # loop over again and set the ip addresses
             for uuid in containerGroupMembers:
                 firewall = IPFW('/tredly/ptn/' + self.partitionName + '/cntr/' + uuid + '/root/usr/local/etc', uuid)
-                
+
                 if (not firewall.readRules()):
                     e_error("Failed to read firewall rules from " + uuid)
-                
+
                 # loop over ips, appending them to this uuid
                 for ip in containerGroupIps:
                     if (not firewall.appendTable(1, ip)):
                         e_error("Failed to add IP address to table 1 in " + uuid)
-                    
+
                 # apply the firewall rules, keeping the return code
                 success = success and firewall.apply()
-                
+
             if (success):
                 e_success("Success")
             else:
                 e_error("Failed")
-                
+
         # Register any URLs
         if (len(self.urls) > 0):
             self.registerLayer7URLs()
@@ -1446,10 +1447,10 @@ class Container:
             e_success("Success")
         else:
             e_error("Failed")
-        
+
         return True
 
-    # Action: stop this container and clean up 
+    # Action: stop this container and clean up
     #
     # Pre: container dataset exists
     # Post: this container has been stopped and all relevant files (nginx/unbound etc) have been cleaned up
@@ -1459,13 +1460,13 @@ class Container:
     # Return: True if succeeded, False otherwise
     def stop(self, destroying = False):
         tredlyHost = TredlyHost()
-        
+
         zfsContainer = ZFSDataset(self.dataset, self.mountPoint)
-        
+
         # return true if container already stopped
         if (not self.isRunning()):
             return True
-        
+
         # remove container from dns
         returnCode = True
         e_note("Removing container from DNS")
@@ -1486,7 +1487,7 @@ class Container:
             e_success("Success")
         else:
             e_error("Failed")
-        
+
 
         # get the url certs from zfs
         reloadNginx = False
@@ -1495,7 +1496,7 @@ class Container:
             # load the nginx file
             upstreamFile = NginxBlock(None, None, self.nginxUpstreamDir.rstrip('/') + '/' + upstreamFilename)
             upstreamFile.loadFile()
-    
+
             # remove attrs from this file
             try:
                 upstreamFile.blocks['upstream'][upstreamFilename].delAttrByRegex('server', "^" + str(self.containerInterfaces[0].ip4Addrs[0].ip) + ':')
@@ -1507,11 +1508,11 @@ class Container:
                     del upstreamFile.blocks['upstream'][upstreamFilename]
             except KeyError:
                 e_error("Definition not found in" + self.nginxUpstreamDir.rstrip('/') + '/' + upstreamFilename)
-            
+
             # save it
             upstreamFile.saveFile()
             reloadNginx = True
-            
+
         # loop over the servername files and delete all urls related to this container
         for servernameFilename in self.nginxServernameFiles.values():
             # load the nginx file
@@ -1526,13 +1527,13 @@ class Container:
                 else:
                     urlDomain = urlObj['url']
                     urlDirectory = '/'
-    
+
                 # check if any other containers are using this url
                 containersWithUrl = tredlyHost.getContainersWithArray(ZFS_PROP_ROOT + '.url', urlObj['url'])
-                
+
                 # remove our uuid from this list
                 containersWithUrl.remove(self.uuid)
-                
+
                 # check if the access file for this container is included in this location block and remove it
                 # copy the list
                 includeItems = list(servernameFile.blocks['server'][0].blocks['location'][urlDirectory].attrs['include'].items())
@@ -1544,12 +1545,12 @@ class Container:
                 if (len(containersWithUrl) == 0):
                     try:
                         del servernameFile.blocks['server'][0].blocks['location'][urlDirectory]
-                        
+
                         # check if the error docs is the last block left, and if so delete it
                         if (len(servernameFile.blocks['server'][0].blocks['location']) == 1):
                             try:
                                 del servernameFile.blocks['server'][0].blocks['location']['/tredly_error_docs']
-                                
+
                                 # if there are no more locations then delete the server block
                                 if (len(servernameFile.blocks['server'][0].blocks['location']) == 0):
                                     del servernameFile.blocks['server'][0]
@@ -1573,35 +1574,35 @@ class Container:
                     else:
                         urlDomain = url
                         urlDirectory = '/'
-                    
+
                     protocol = redirectUrl['url'].split('://')[0]
-        
+
                     redirectUrlFile = nginxFormatFilename(protocol + '://' + urlDomain)
-        
+
                     redirectServernameFile = NginxBlock(None, None, self.nginxServernameDir.rstrip('/') + '/' + nginxFormatFilename(redirectUrlFile))
                     redirectServernameFile.loadFile()
 
                     # check if any other containers are using this redirect url
-                    
+
                     containersWithUrl = tredlyHost.getContainersWithArray(ZFS_PROP_ROOT + '.redirect_url', redirectUrl['url'])
-                    
+
                     # remove our uuid from this list
                     containersWithUrl.remove(self.uuid)
-                    
+
                     # if no other containers are using this url then delete the location block
                     if (len(containersWithUrl) == 0):
                         try:
                             del redirectServernameFile.blocks['server'][0].blocks['location'][urlDirectory]
-                        except: 
+                        except:
                             e_error("Location block " + urlDirectory + " not found")
-                        
+
                         try:
                             # check if there are now no location blocks listed
                             if (len(redirectServernameFile.blocks['server'][0].blocks['location']) == 0):
                                 del redirectServernameFile.blocks['server'][0]
                         except:
                             e_error("No server block found")
-                        
+
                         # save it
                         if (not redirectServernameFile.saveFile()):
                             e_error("Failed to save redirect file")
@@ -1611,10 +1612,10 @@ class Container:
         # clean up the access file if it exists
         if (self.nginxAccessfileDir is not None):
             accessFile = self.nginxAccessfileDir.rstrip('/') + '/' + nginxFormatFilename(self.uuid)
-        
+
             if (os.path.isfile(accessFile)):
                 os.remove(accessFile)
-                
+
                 reloadNginx = True
 
         # remove layer 4 proxy data for this uuid
@@ -1622,27 +1623,27 @@ class Container:
             e_note("Removing Layer 4 proxy (tcp/udp) rules for " + self.name)
             # remove any layer 4 proxy ports
             layer4Proxy = Layer4ProxyFile(IPFW_FORWARDS)
-            
+
             # read the file
             layer4Proxy.read()
-            
+
             # remove lines associated with this uuid
             layer4Proxy.removeElementsByUUID(self.uuid)
-            
+
             layer4Proxy.write()
             layer4Proxy.reload()
-            
+
         # check if postgres is installed
         cmd = ['pkg', '-j', 'trd-' + self.uuid, 'info']
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
         stdOut, stdErr = process.communicate()
-        
+
         # convert output to string
         stdOutString = stdOut.decode(encoding='UTF-8')
-        
+
         if (process.returncode != 0):
             e_error("Failed to get a list of packages for container "+ self.uuid)
-        
+
         # loop over the lines, looking for postgres
         for line in stdOutString.splitlines():
             if (re.match('.*postgresql[0-9]*-server.*', line)):
@@ -1653,7 +1654,7 @@ class Container:
         if (self.group is not None):
             # get a list of containergroup members
             containerGroupUUIDs = tredlyHost.getContainerGroupContainerUUIDs(self.group, self.partitionName)
-    
+
             if (len(containerGroupUUIDs) > 0):
                 e_note("Updating container group members for group " + self.group)
                 success = True
@@ -1664,10 +1665,10 @@ class Container:
                     groupMember.loadFromZFS(groupMemberDataset)
                     if (groupMember.uuid is None):
                         groupMember.uuid = memberUUID
-                    
+
                     # remove the ip from this containers containergroup members
                     groupMember.firewall.removeFromTable(1, str(self.containerInterfaces[0].ip4Addrs[0].ip))
-                    
+
                     # apply it and get whether it succeeded or failed
                     success = (success and groupMember.firewall.apply())
                 if (success):
@@ -1684,7 +1685,7 @@ class Container:
                     e_success("Success")
                 else:
                     e_error("Failed")
-            
+
             # run the ondestroy script if the destroy flag is set and we have a destroy script
             if (destroying) and (self.onDestroyScript is not None):
                 e_note("Running onDestroy script")
@@ -1692,12 +1693,12 @@ class Container:
                     e_success("Success")
                 else:
                     e_error("Failed")
-        
+
             e_note("Stopping Container " + self.name)
             cmd = ['jail', '-r', 'trd-' + self.uuid]
             process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
             stdOut, stdErr = process.communicate()
-            
+
             if (process.returncode == 0):
                 e_success("Success")
             else:
@@ -1710,35 +1711,35 @@ class Container:
                 # get a ipfw object on the host
                 hostFirewall = IPFW('/usr/local/etc')
                 hostFirewall.readRules()
-                
+
                 # remove the ip from table 1
                 if (not hostFirewall.removeFromTable(1, str(self.containerInterfaces[0].ip4Addrs[0].ip))):
                     e_error("Failed to remove ip address from host table 1")
-                
+
                 # remove the epair from table 2
                 if (not hostFirewall.removeFromTable(2, self.containerInterfaces[0].name)):
                     e_error("Failed to remove interface from host table 2")
-                
+
                 hostFirewall.apply()
 
         # tear down any resource limits if they were placed
         if (self.maxCpu is not None) or (self.maxRam is not None):
             e_note("Removing resource limits")
             cmd = ['rctl', '-r', 'jail:trd-' + self.uuid]
-            
+
             process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
             stdOut, stdErr = process.communicate()
-            
+
             if (process.returncode == 0):
                 e_success("Success")
             else:
                 e_error("Failed")
-                
+
 
         # make sure the hosts epair exists before attempting to destroy it
         if (networkInterfaceExists(self.hostIface)):
             e_note("Removing container networking")
-            
+
             cmd = [ 'ifconfig', self.hostIface, 'destroy']
             process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
             stdOut, stdErr = process.communicate()
@@ -1747,7 +1748,7 @@ class Container:
                 e_success("Success")
             else:
                 e_error("Failed to remove epair " + self.hostIfaced)
-            
+
             # remove ip address from zfs
             zfsContainer.unsetProperty(ZFS_PROP_ROOT + ":ip4_addr")
 
@@ -1759,7 +1760,7 @@ class Container:
             e_success("Success")
         else:
             e_error("Failed")
-        
+
         # reload nginx
         if (reloadNginx):
             e_note("Reloading Layer 7 Proxy")
@@ -1788,16 +1789,16 @@ class Container:
     # Pre: container exists and is running
     # Post: ipfw rules have been added to container
     #
-    # Params: 
+    # Params:
     #
     # Return: True if succeeded, False otherwise
     def addContainerFirewallRules(self):
         # Set up the firewall rules for this container
         self.firewall = IPFW(self.mountPoint + "/root/usr/local/etc", self.uuid)
-        
+
         # include the rules for whitelists even if the tables are empty
         # the table will be updated instead of the ruleset whenever the whitelist changes
-        
+
         # loop over the interfaces
         for containerInterface in self.containerInterfaces:
             # and the ips assigned to this interface
@@ -1805,15 +1806,15 @@ class Container:
                 # containergroup members
                 self.firewall.openPort("in", "tcp", containerInterface.name, "'table(1)'", str(containerIP4.ip), self.tcpInPorts)
                 self.firewall.openPort("in", "udp", containerInterface.name, "'table(1)'", str(containerIP4.ip), self.udpInPorts)
-                
+
                 # Partition whitelist rules
                 self.firewall.openPort("in", "tcp", containerInterface.name, "'table(2)'", str(containerIP4.ip), self.tcpInPorts)
                 self.firewall.openPort("in", "udp", containerInterface.name, "'table(2)'", str(containerIP4.ip), self.udpInPorts)
-                
+
                 # Container whitelist
                 self.firewall.openPort("in", "tcp", containerInterface.name, "'table(3)'", str(containerIP4.ip), self.tcpInPorts)
                 self.firewall.openPort("in", "udp", containerInterface.name, "'table(3)'", str(containerIP4.ip), self.udpInPorts)
-                
+
                 # Add some default rules for this interface if it isnt in a containergorup and doesnt have whitelist set
                 if (self.group is None) and (len(self.ipv4Whitelist) == 0):
                     # open the IN ports from any
@@ -1824,11 +1825,11 @@ class Container:
                 if (not "any" in self.tcpOutPorts):
                     self.firewall.openPort("out", "tcp", containerInterface.name, str(containerIP4.ip), "any", [80])
                     self.firewall.openPort("out", "tcp", containerInterface.name, str(containerIP4.ip), "any", [443])
-                    
+
                 # if user didn't request "any" out for udp, then allow 53 (dns) out by default
                 if (not "any" in self.udpOutPorts):
                     self.firewall.openPort("out", "udp", containerInterface.name, str(containerIP4.ip), "any", [53])
-                
+
                 # open port 80 if a urlcert is blank, and open port 443 if a urlcert is not blank
                 openPort443 = False
                 openPort80 = False
@@ -1837,39 +1838,39 @@ class Container:
                         openPort80 = True
                     elif (url['cert'] is not None):
                         openPort443 = True
-                        
+
                 if (openPort80):
                     self.firewall.openPort("in", "tcp", containerInterface.name, builtins.tredlyCommonConfig.httpProxyIP, str(containerIP4.ip), [80])
                 if (openPort443):
                     self.firewall.openPort("in", "tcp", containerInterface.name, builtins.tredlyCommonConfig.httpProxyIP, str(containerIP4.ip), [443])
-                
+
                 # allow out ports as specified
                 self.firewall.openPort("out", "tcp", containerInterface.name, str(containerIP4.ip), "any", self.tcpOutPorts)
                 self.firewall.openPort("out", "udp", containerInterface.name, str(containerIP4.ip), "any", self.udpOutPorts)
-                
+
                 # allow DNS to the proxy
                 self.firewall.openPort("out", "udp", containerInterface.name, str(containerIP4.ip), builtins.tredlyCommonConfig.httpProxyIP, [53])
-                
+
                 # allow this container to talk to itself on any port on this interface
                 self.firewall.openPort("any", "ip", containerInterface.name, str(containerIP4.ip), str(containerIP4.ip), ["any"])
-                
+
         # and allow this container to talk to itself on loopback
         self.firewall.openPort("any", "ip", "lo0", "any", "any", ["any"])
-        
+
         # set the container whitelist table up in this container
         for ip4 in self.ipv4Whitelist:
             self.firewall.appendTable(3, ip4)
 
-            
+
         # Set the partition whitelist table up in this new container
         zfsPartition = ZFSDataset('zroot/tredly/ptn/' + self.partitionName)
-        
+
         # get the whitelist
         ptnWhitelist = zfsPartition.getArray(ZFS_PROP_ROOT + '.ptn_ip4whitelist')
 
         for key, ip4 in ptnWhitelist.items():
             self.firewall.appendTable(2, ip4)
-        
+
         # get a handle to ZFS properties
         zfsContainer = ZFSDataset(self.dataset, self.mountPoint)
         # register ports in ZFS
@@ -1881,27 +1882,27 @@ class Container:
             zfsContainer.appendArray(ZFS_PROP_ROOT + ".tcpoutports", str(tcpOutPort))
         for udpOutPort in self.udpOutPorts:
             zfsContainer.appendArray(ZFS_PROP_ROOT + ".udpoutports", str(udpOutPort))
-        
+
         # apply the rules and return
         return self.firewall.apply()
-    
+
     # Action: apply resource limits to this container
     #
     # Pre: container started and dataset exists
     # Post: resource limits have been placed on this container
     #
-    # Params: 
+    # Params:
     #
     # Return: True if succeeded, False otherwise
     def applyResourceLimits(self):
         # set max ram
         if (self.maxRam is not None):
             e_note("Setting maxRam property to " + self.maxRam)
-            
+
             cmd = ['rctl', '-a', 'jail:trd-' + self.uuid + ":memoryuse:deny=" + self.maxRam]
             process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
             stdOut, stdErr = process.communicate()
-            
+
             if (process.returncode == 0):
                 e_success()
             else:
@@ -1910,11 +1911,11 @@ class Container:
         else:
             e_note("Setting maxRam property to unlimited")
             e_success()
-        
+
         # set max cpu
         if (self.maxCpu is not None):
             e_note("Setting maxCpu property to " + self.maxCpu)
-            
+
             # assign it
             cmd = ['rctl', '-a', 'jail:trd-' + self.uuid + ":pcpu:deny=" + str(self.maxCpu)]
             process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
@@ -1932,9 +1933,9 @@ class Container:
         # set quota on ZFS (maxHdd)
         if (self.maxHdd is not None):
             e_note("Setting maxHdd property to " + self.maxHdd)
-            
+
             zfsContainer = ZFSDataset(self.dataset, self.mountPoint)
-            
+
             if (zfsContainer.setProperty("quota", self.maxHdd)):
                 e_success()
             else:
@@ -1945,40 +1946,40 @@ class Container:
             e_success()
 
         return True
-    
+
     # Action: run the oncreate commands within this container
     #
     # Pre: container dataset exists, container is started
     # Post: oncreate commands have been run within this container
     #
-    # Params: 
+    # Params:
     #
     # Return: True if succeeded, False otherwise
     def runOnCreateCmds(self):
         # loop over the create commands
         for createCmd in self.onCreate:
             if (createCmd['type'] == "exec"):    # ONCREATE COMMANDS
-                e_note('Running onStart command: "' +  createCmd['value'] +'"')
-                
+                e_note('Running onCreate command: "' +  createCmd['value'] +'"')
+
                 # run it
                 if (self.runCmd(createCmd['value'])):
                     e_success("Success")
                 else:
                     e_error("Failed")
-            
+
             elif (createCmd['type'] == "installPackage"):   # INSTALL PACKAGE COMMANDS
                 e_note("Installing: " + createCmd['value'] + " and its dependencies")
-                
+
                 # first mount the pkg cache from the host
                 cmd = ['mount_nullfs', '/var/cache/pkg', self.mountPoint + '/root/var/cache/pkg']
                 process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
                 stdOut, stdErr = process.communicate()
                 if (process.returncode != 0):
                     e_error("Failed to mount host's pkg cache")
-                
+
                 # proceed with install from the host
                 cmd = ['pkg', '-j', 'trd-' + self.uuid, 'install', "-y", createCmd['value']]
-                
+
                 installProcess = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
                 stdOut, stdErr = installProcess.communicate()
                 if (installProcess.returncode != 0):
@@ -1994,24 +1995,24 @@ class Container:
                 stdOut, stdErr = process.communicate()
                 if (process.returncode != 0):
                     e_error("Failed to unmount host's pkg cache")
-                    
+
                 # if the install succeeded and this was a postgres server then do workarounds
                 if (installProcess.returncode == 0) and (re.match('^.*postgresql[0-9]*-server.*$', createCmd['value'])):
                     self.applyPostgresWorkaroundOnStart()
-                
+
             elif (createCmd['type'] == "fileFolderMapping"):
                 # if first word of the source is "partition" then the file comes from the partition
                 if (re.match('^partition/', createCmd['source'])):
                     e_note('Copying Partition Data "' + createCmd['source'] + '" to ' + createCmd['target'])
-                    
+
                     # create the path to the source file/directory
                     source = TREDLY_PARTITIONS_MOUNT + "/" + self.partitionName + "/" + TREDLY_PTN_DATA_DIR_NAME + "/" + createCmd['source'].lstrip('partition/').rstrip('/') + '/'
                 else:
                     e_note('Copying Container Data "' + createCmd['source'] + '" to ' + createCmd['target'])
-                    
+
                     # create the path to the source file/directory
                     source = builtins.tredlyFile.fileLocation + createCmd['source']
-                    
+
                 # set up the target
                 target = self.mountPoint + '/root' + createCmd['target']
                 targetDir = os.path.dirname(target)
@@ -2019,7 +2020,7 @@ class Container:
                 # make sure the target exists
                 if (not os.path.isdir(targetDir)):
                     os.makedirs(targetDir)
-                
+
                 # Copy the data in
                 cmd = ['cp', '-R', source, target]
 
@@ -2034,18 +2035,23 @@ class Container:
                     e_success("Success")
             else:
                 e_warning("Unknown command " + createCmd['type'])
-    
+
     # Action: run a command within this container
     #
     # Pre: container dataset exists and has been started
     # Post: the given command has been run within the container
     #
-    # Params: command - the command to run
+    # Params: command - the command to run (string)
     #
     # Return: True if succeeded, False otherwise
     def runCmd(self, command):
-        # add a jexec before the command passed to us
-        command = ['jexec', 'trd-' + self.uuid, 'sh', '-c', command]
+        # use shlex to split the command string, which will preserve quotes for us
+        splitCmd = shlex.split(command)
+
+        # add a jexec to the start of the command
+        command = ['jexec', 'trd-' + self.uuid] + splitCmd
+
+        # run the command
         process = Popen(command,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
         stdOut, stdErr = process.communicate()
         if (process.returncode != 0):
@@ -2053,9 +2059,9 @@ class Container:
             print(stdOut.decode('UTF-8'))
             print(stdErr.decode('UTF-8'))
             return False
-        
+
         return True
-    
+
     # Action: creates a script within this container based upon the given commands
     #
     # Pre: this container dataset exists
@@ -2068,12 +2074,12 @@ class Container:
     def createScript(self, filePath, commands):
         # set the full path for the host
         fullFilePath = self.mountPoint + '/root' + filePath
-        
+
         # open the onstop script and write in the commands
         with open(fullFilePath, "w") as script:
             # put the shebang into the file
             print("#!/usr/bin/env sh", file=script)
-            
+
             # loop over the commands
             for cmd in commands:
                 if (cmd['type'] == "exec"):
@@ -2081,34 +2087,34 @@ class Container:
                     print(cmd['value'], file=script)
                 else:
                     e_warning("Unknown command " + cmd['type'])
-        
+
         # set the file's permissions
         os.chmod(fullFilePath, 0o700)
-        
+
         return True
-        
-    
+
+
     # Action: applies the onstart postgres workaround to this container
     #
     # Pre: container dataset exists and container started
     # Post: postgres workarounds have been applied to this container
     #
-    # Params: 
+    # Params:
     #
     # Return: True if succeeded, False otherwise
     def applyPostgresWorkaroundOnStart(self):
-        
+
         e_note("This container uses postgresql, changing the pgsql UID within this container")
-        
+
         # a variable for looping
         userExists = True
 
         # use the last 2 parts of the ip address as the new uid for postgres
         ipPart3 = str(self.containerInterfaces[0].ip4Addrs[0].ip).split('.')[-2]
         ipPart4 = str(self.containerInterfaces[0].ip4Addrs[0].ip).split('.')[-1]
-        
+
         newUID = int("70" + ipPart3 + ipPart4)
-        
+
         # check if this uid already exists
         while (userExists):
             try:
@@ -2121,7 +2127,7 @@ class Container:
                 # Handle existing user
                 newUID = newUID + 1
                 userExists = True
-        
+
         # modify the uid within the container
         cmd = ['jexec', 'trd-' + self.uuid, '/usr/sbin/pw', 'usermod', 'pgsql', '-u', str(newUID)]
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
@@ -2133,7 +2139,7 @@ class Container:
             print(cmd)
             print(stdErr)
             return False
-        
+
         e_note("Changing UID of files owned by pgsql")
         # change the ownership of all files with owner uid 70
         #eval "jexec ${jid} sh -c 'find / -user 70 -exec chown -h pgsql {} \;'"
@@ -2147,20 +2153,20 @@ class Container:
             print(cmd)
             print(stdErr)
             return False
-        
+
         return True
-    
+
     # Action: applies the postgres workaround to this container
     #
     # Pre: container dataset exists and is running
     # Post: postgres has been stopped
     #
-    # Params: 
+    # Params:
     #
     # Return: True if succeeded, False otherwise
     def applyPostgresWorkaroundOnStop(self):
         e_note("Shutting down and cleaning up postgresql")
-        
+
         # stop postgres server
         if (self.runCmd("/usr/sbin/service postgresql stop")):
             e_success("Success")
@@ -2172,32 +2178,32 @@ class Container:
 
     # Action: registers any urls that this container responds to in the layer 7 proxy
     #
-    # Pre: 
+    # Pre:
     # Post: nginx config files have been updated with URL data
     #
-    # Params: 
+    # Params:
     #
     # Return: True if succeeded, False otherwise
     def registerLayer7URLs(self):
         e_note('Configuring layer 7 Proxy (HTTP) for ' + self.name)
         # set up ZFS access to container dataset
         zfsContainer = ZFSDataset(self.dataset, self.mountPoint)
-        
+
         layer7Proxy = Layer7Proxy()
-        
+
         urlIncludes = []
-        
+
         # check if a whitelist exists and whitelist each url
         if (len(self.ipv4Whitelist) > 0):
             urlIncludes.append('/usr/local/etc/nginx/access/' + nginxFormatFilename(self.uuid))
-        
+
         # get the partition whitelist
         zfsPartition = ZFSDataset('zroot/tredly/ptn/' + self.partitionName)
         ptnWhitelist = zfsPartition.getArray(ZFS_PROP_ROOT + '.ptn_ip4whitelist')
         # include the ptn whitelist if it has elements
         if (len(ptnWhitelist) > 0):
             urlIncludes.append('/usr/local/etc/nginx/access/ptn_' + nginxFormatFilename(self.partitionName))
-        
+
         for urlObj in self.urls:
             e_note("Setting up URL " + urlObj['url'])
             # Set some values for http/https
@@ -2217,7 +2223,7 @@ class Container:
             else:
                 urlDomain = urlObj['url']
                 urlDirectory = '/'
-            
+
             # set up the filenames
             servernameFilename = protocol + '-' + nginxFormatFilename(urlDomain.rstrip('/'))
             upstreamFilename = protocol + '-' + nginxFormatFilename(urlObj['url'].rstrip('/'))
@@ -2233,8 +2239,8 @@ class Container:
             # set the partition whitelist access file
             if (len(ptnWhitelist) > 0):
                 layer7Proxy.registerAccessFile('/usr/local/etc/nginx/access/ptn_' + self.partitionName, ptnWhitelist.values(), True)
-            
-            
+
+
             # Register this URL in DNS
             e_note("Registering " + urlDomain + " in DNS")
 
@@ -2242,17 +2248,17 @@ class Container:
             unboundFile = UnboundFile(UNBOUND_CONFIG_DIR + "/" + unboundFormatFilename(urlDomain))
             # read contents
             unboundFile.read()
-            
+
             # assign the url domain to the proxy IP in dns
             if (not unboundFile.append("local-data", urlDomain, "IN", "A", builtins.tredlyCommonConfig.httpProxyIP, self.uuid)):
                 e_error("Failed to add DNS entry for url")
-            
+
             # write out the file and show message to user
             if (unboundFile.write()):
                 e_success("Success")
             else:
                 e_error("Failed")
-                
+
             # check if a cert wqs issued for the url, and if so then create a http redirect
             if (sslCert is None):
                 redirectToProtocol = "http"
@@ -2263,15 +2269,15 @@ class Container:
             redirectTo = urlObj['url']
             for redirectFrom in urlObj['redirects']:
                 redirectFromDomain = redirectFrom['url'].split('://', 1)[1].split('/', 1)[0]
-                
+
                 # set up the directory - strip off the protocol and search for a /
                 if ('/' in redirectFrom['url'].split('://', 1)[1]):
                     redirectFromDirectory = '/' + redirectFrom['url'].split('://', 1)[1].split('/', 1)[1].rstrip('/') + '/'
                 else:
                     redirectFromDirectory = '/'
-                
+
                 redirectFromUrl = redirectFromDomain + redirectFromDirectory
-                
+
                 # set the paths if the cert is set
                 if (redirectFrom['cert'] is not None):
                     sslCert = 'ssl/' + self.partitionName + '/' + redirectFrom['cert'].split('/')[-1] + '/server.crt'
@@ -2281,28 +2287,28 @@ class Container:
                     sslCert = None
                     sslKey = None
                     redirectFromProtocol = "http"
-                
+
                 # register the redirect
                 if (not layer7Proxy.registerUrlRedirect(redirectFromUrl, redirectToProtocol + '://' + redirectTo, sslCert, sslKey)):
                     e_error("Failed to register redirect from " + redirectFrom['url'] + " to " + urlObj['url'])
-                
+
                 # Register this URL in DNS
                 e_note("Registering " + redirectFromDomain + " in DNS")
                 # base DNS filename off last 3 (sub)domains
                 fileParts = redirectFromDomain.split('.')
-                
+
                 # create the filename
                 filename = unboundFormatFilename(redirectFromDomain)
-                
+
                 # and the object
                 unboundFile = UnboundFile(UNBOUND_CONFIG_DIR + "/" + unboundFormatFilename(filename))
                 # read contents
                 unboundFile.read()
-                
+
                 # only assign this hostname to the first interface
                 if (not unboundFile.append("local-data", redirectFromDomain, "IN", "A", builtins.tredlyCommonConfig.httpProxyIP, self.uuid)):
                     e_error("Failed to register URL in DNS")
-                
+
                 # write out the file and show message to user
                 if (unboundFile.write()):
                     e_success("Success")
@@ -2316,13 +2322,13 @@ class Container:
         else:
             e_error("Failed")
             return False
-    
+
     # Action: set up any layer 4 proxy ports on the host
     #
-    # Pre: 
+    # Pre:
     # Post: any layer 4 proxy ports have been forwarded
     #
-    # Params: 
+    # Params:
     #
     # Return: True if succeeded, False otherwise
     def registerLayer4Proxy(self):
@@ -2334,37 +2340,37 @@ class Container:
             layer4Proxy = Layer4ProxyFile(IPFW_FORWARDS)
             # read the file
             layer4Proxy.read()
-            
+
             # add tcp ports
             for tcpInPort in self.tcpInPorts:
                 # add the rule
                 if (layer4Proxy.append(self.uuid, 'tcp', tcpInPort, str(self.containerInterfaces[0].ip4Addrs[0].ip), str(tcpInPort))):
-                    # it worked, so append zfs 
+                    # it worked, so append zfs
                     zfsContainer.appendArray(ZFS_PROP_ROOT + ".layer4proxytcp", str(self.containerInterfaces[0].ip4Addrs[0].ip) + ":" + str(tcpInPort))
                 else:
                     e_error("Could not add port " + str(tcpInPort) + "tcp to Layer 4 Proxy. Does a rule already exist for this port?")
-    
+
             # add udp ports
             for udpInPort in self.udpInPorts:
                 # add the rule
                 if (layer4Proxy.append(self.uuid, 'udp', udpInPort, str(self.containerInterfaces[0].ip4Addrs[0].ip), str(udpInPort))):
-                    # it worked, so append zfs 
+                    # it worked, so append zfs
                     zfsContainer.appendArray(ZFS_PROP_ROOT + ".layer4proxyudp", str(self.containerInterfaces[0].ip4Addrs[0].ip) + ":" + str(udpInPort))
                 else:
                     e_error("Could not add port " + str(udpInPort) + "udp to Layer 4 Proxy. Does a rule already exist for this port?")
-    
+
             # write out the layer 4 proxy file and run it if it succeeded, returning hte value
             if (layer4Proxy.write()):
                 return layer4Proxy.reload()
-            
+
             return False
 
     # Action: get a list of all mounts (except devfs) used by this container
     #
     # Pre: container dataset exists
-    # Post: 
+    # Post:
     #
-    # Params: 
+    # Params:
     #
     # Return: list of mounted paths
     def getMounts(self):
@@ -2373,13 +2379,13 @@ class Container:
 
         # list the mounts
         process = Popen(['mount'], stdin=PIPE, stdout=PIPE, stderr=PIPE)
-        
+
         stdOut, stdErr = process.communicate()
         if (process.returncode != 0):
             return None
-    
+
         stdOutString = stdOut.decode("utf-8")
-        
+
         for line in stdOutString.splitlines():
             # look for this containers mountpoints
             if (re.match('^' + self.mountPoint.rstrip('/') + '/', line.split()[2])):
@@ -2395,15 +2401,15 @@ class Container:
     # Pre: container dataset exists
     # Post: all mounts except devfs have been unmounted
     #
-    # Params: 
+    # Params:
     #
     # Return: True if succeeded, False otherwise
     def unmountAllDirs(self):
         # get a list of mounts to unmount
         mounts = self.getMounts()
-        
+
         returnValue = True
-        
+
         # unmount the directories
         for mount in mounts:
             cmd = ['umount', '-f', mount]
@@ -2413,13 +2419,13 @@ class Container:
             if (rc != 0):
                 e_error("Failed to unmount container directory " + baseDir)
                 print(cmd)
-                
+
                 returnValue = (False and returnValue)
             else:
                 returnValue = (True and returnValue)
-        
+
         return returnValue
-    
+
     # Action: Moves this container to a new host
     #
     # Pre: container exists
@@ -2429,13 +2435,13 @@ class Container:
     #
     # Return: True if succeeded, False otherwise
     def moveToHost(self, userHostPortString):
-        
+
         # TODO: moving containers with URLs presents an issue with setting up of SSLCerts on the remote host where the container's SSL cert comes from the container directory
         # this could potentially be mitigated by keeping copies of the container certs within the container itself under <uuid>/sslcerts
         if (len(self.urls)):
             e_error("This container is associated with " + str(len(self.urls)) + " URL(s). Container move does not currently support moving containers associated with URLs.")
             return False
-        
+
         # split out the host into user, hostname/ip and port
         # get the port
         if (':' in userHostPortString):
@@ -2448,7 +2454,7 @@ class Container:
             user = userHostPortString.split('@', 1)[0]
         else:
             user = 'tredly'
-        
+
         # get the host
         if ('@' in userHostPortString) and (':' in userHostPortString): # matches username@host:port
             host = userHostPortString.split('@', 1)[-1].split(':', 1)[0]
@@ -2467,22 +2473,22 @@ class Container:
         cmd = sshCmd + ['which tredly']
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
         stdOut, stdErr = process.communicate()
-        
+
         if (process.returncode == 0):
             e_success()
         else:
             e_error("Tredly is not installed on the remote host")
             return False
-        
+
         # make sure this container's uuid isnt already in use on the remote machine
         e_note("Checking that this UUID does not exist on the remote host")
         cmd = sshCmd + ['zfs get -H -o property,value all | grep "' + ZFS_PROP_ROOT + ':host_hostuuid"']
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
         stdOut, stdErr = process.communicate()
         rc = process.returncode
-        
+
         stdOutString = stdOut.decode('UTF-8')
-        
+
         # look for the uuid of this container
         for line in stdOutString.splitlines():
             if (line.split()[1] == self.uuid):
@@ -2495,21 +2501,21 @@ class Container:
         cmd = sshCmd + ['tredly list partition ' + self.partitionName]
         process = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
         stdOut, stdErr = process.communicate()
-        
+
         if (process.returncode == 0):
             e_success()
         else:
             e_error()
             return False
-        
+
         # TODO: make sure that the container's URL certs exist on the remote host
 
         # set snapshot name to current epoch
         snapshotName = str(time.time())
-        
+
         # get a handle to ZFS properties
         zfsContainer = ZFSDataset(self.dataset, self.mountPoint)
-        
+
         # shut down the container
         e_note("Stopping Container")
         if (self.stop()):
@@ -2517,7 +2523,7 @@ class Container:
         else:
             e_error()
             return False
-        
+
         # take a snapshot of the container
         e_note("Snapshotting Container")
         if (zfsContainer.takeSnapshot(snapshotName)):
@@ -2525,7 +2531,7 @@ class Container:
         else:
             e_error()
             return False
-        
+
         # send the snapshot to an xzipped file
         e_note("Saving Snapshot. This may take some time...")
         # TODO: change this from /tmp to something else
@@ -2535,7 +2541,7 @@ class Container:
         else:
             e_error()
             return False
-        
+
         # copy the file across
         e_note("Copying file to host " + host)
         cmd = ['scp', '-P', port, filePath, user + "@" + host + ':' + filePath]
@@ -2547,7 +2553,7 @@ class Container:
         else:
             e_error()
             return False
-        
+
         # unpack the file on the remote host and restore the snapshot
         e_note("Unpacking file on host " + host)
         cmd = ['ssh', '-p', port, user + "@" + host, 'xz -d < ' + filePath + ' | zfs receive ' + self.dataset]
@@ -2586,7 +2592,7 @@ class Container:
             e_success()
         else:
             e_error()
-        
+
         e_note("Cleaning up remote host")
         cmd = ['ssh', '-p', port, user + "@" + host, 'rm', '-f', filePath]
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
@@ -2596,5 +2602,5 @@ class Container:
             e_success()
         else:
             e_error()
-        
+
         return True

@@ -16,51 +16,51 @@ class ZFSDataset:
 
     # Action: check if ZFS dataset exists
     #
-    # Pre: 
-    # Post: 
+    # Pre:
+    # Post:
     #
-    # Params: 
+    # Params:
     #
     # Return: True if exists, False otherwise
     def exists(self):
         process = Popen(['zfs', 'list', self.dataset],  stdin=PIPE, stdout=PIPE, stderr=PIPE);
         stdOut, stdErr = process.communicate();
         rc = process.returncode;
-        
+
         # check the exit code
         if (rc == 0):
             return True;
         else:
             return False;
-    
+
     # Action: create a ZFS dataset
     #
-    # Pre: 
+    # Pre:
     # Post: dataset exists
     #
-    # Params: 
+    # Params:
     #
     # Return: True if dataset now exists, False otherwise
     def create(self):
         # make sure the dataset already exists
         if (self.exists()):
             return True;
-        
+
         # create the zfs dataset with the given mountpoint
         process = Popen(['zfs', 'create', '-pu', '-o', 'mountpoint=' + self.mountPoint, self.dataset],  stdin=PIPE, stdout=PIPE, stderr=PIPE)
         stdOut, stdErr = process.communicate()
         rc = process.returncode
-        
+
         # check exit code from zfs create
         if (rc != 0):
             # failed so return
             return False
-        
+
         return True
 
     # Action: destroy a ZFS dataset
     #
-    # Pre: 
+    # Pre:
     # Post: dataset does not exist
     #
     # Params: recursive - whether or not to delete this ZFS dataset's children
@@ -70,7 +70,7 @@ class ZFSDataset:
         # make sure the dataset already exists
         if (not self.exists()):
             return True
-        
+
         # destroy the zfs dataset
         if (recursive):
             cmd = ['zfs', 'destroy', '-rf', self.dataset]
@@ -78,14 +78,14 @@ class ZFSDataset:
             cmd = ['zfs', 'destroy', '-f', self.dataset]
         process = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
         stdOut, stdErr = process.communicate()
-        
+
         # check exit code from zfs destroy
         if (process.returncode != 0):
             e_error("Failed to destroy dataset " + self.dataset)
             print(stdErr)
             # failed so return
             return False
-        
+
         # remove the directory,make sure it has a value and isnt the root directory!
         if (self.mountPoint is not None) and (self.mountPoint != '/'):
             cmd = ['rm', '-rf', self.mountPoint]
@@ -97,50 +97,50 @@ class ZFSDataset:
 
     # Action: mount a ZFS dataset
     #
-    # Pre: 
+    # Pre:
     # Post: dataset has been mounted
     #
-    # Params: 
+    # Params:
     #
     # Return: True if succeeded, False otherwise
     def mount(self):
         # make sure the dataset already exists
         if (not self.exists()):
             return False
-        
+
         # create the zfs dataset with the given mountpoint
         process = Popen(['zfs', 'mount', self.dataset],  stdin=PIPE, stdout=PIPE, stderr=PIPE)
         stdOut, stdErr = process.communicate()
         rc = process.returncode
-        
+
         # check exit code from zfs create
         return (rc == 0)
-    
+
     # Action: check if this zfs dataset is mounted
     #
-    # Pre: 
+    # Pre:
     # Post:
     #
-    # Params: 
+    # Params:
     #
     # Return: True if mounted, False otherwise
     def isMounted(self):
         # make sure the dataset already exists
         if (not self.exists()):
             return False
-        
+
         # get a list of mounts
         process = Popen(['mount'],  stdin=PIPE, stdout=PIPE, stderr=PIPE)
         stdOut, stdErr = process.communicate()
         rc = process.returncode
-        
+
         # if the command errored then return false
         if (rc != 0):
             return False
-        
+
         # decode from bytes to string
         stdOutString = stdOut.decode("utf-8")
-        
+
         # loop over the lines, looking for our dataset
         for line in stdOutString.splitlines():
             # check if the first element in the line matches our dataset and if it does then its mounted
@@ -162,24 +162,24 @@ class ZFSDataset:
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
         stdOut, stdErr = process.communicate()
         rc = process.returncode
-        
+
         # check the exit code
         if (rc == 0):
             # executed successfully
             stdOutString = stdOut.decode(encoding='UTF-8').rstrip()
-            
+
             # if a dash was returned then return None as it is the same thing
             if (stdOutString == '-'):
                 return None
-            
+
             return stdOutString
         else:
             # command failed
             return None
-    
+
     # Action: get a property from a zfs dataset recursively
     #
-    # Pre: 
+    # Pre:
     # Post: requested property has been returned as a list
     #
     # Params: property - the property to request from the ZFS Dataset
@@ -189,7 +189,7 @@ class ZFSDataset:
         cmd = ['zfs', 'get', '-H', '-o', 'value', '-r', property, self.dataset]
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
         stdOut, stdErr = process.communicate()
-        
+
         stdOutString = stdOut.decode("utf-8").strip()
 
         # check the exit code
@@ -202,14 +202,14 @@ class ZFSDataset:
                 if (line != '-'):
                     results.append(line)
             return results
-        
+
         else:
             # command failed
             return None
-        
+
     # Action: get a property from a zfs dataset
     #
-    # Pre: 
+    # Pre:
     # Post: requested property has been returned
     #
     # Params: property - the property to set
@@ -219,7 +219,7 @@ class ZFSDataset:
     def setProperty(self, property, value):
         if (value is None):
             value = '-'
-        
+
         cmd = ['zfs', 'set', property + '=' + value, self.dataset]
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
         stdOut, stdErr = process.communicate()
@@ -256,7 +256,7 @@ class ZFSDataset:
 
     # Action: add a value to a "property array"
     #
-    # Pre: 
+    # Pre:
     # Post: requested property has been added at the requested location
     #
     # Params: property - the zfs property array to add to
@@ -269,7 +269,7 @@ class ZFSDataset:
         grepCmd = ['grep', '-F', property]
         sedCmd = ['sed', 's/^' + property + '://']
         sortCmd = ['sort', '-k', '1', '-n']
-        
+
         zfsResult = Popen(zfsCmd, stdout=PIPE)
         grepResult = Popen(grepCmd, stdin=zfsResult.stdout, stdout=PIPE)
         sedResult = Popen(sedCmd, stdin=grepResult.stdout, stdout=PIPE)
@@ -277,7 +277,7 @@ class ZFSDataset:
         stdOut, stdErr = sortResult.communicate()
 
         zfsResult.wait()
-        
+
         # convert stdout to string
         stdOutString = stdOut.decode("utf-8").strip()
 
@@ -288,7 +288,7 @@ class ZFSDataset:
 
             # split off the highest index
             index = int(lastLine.split()[0])
-            
+
             # increment by one
             index += 1
         else:
@@ -299,8 +299,8 @@ class ZFSDataset:
 
     # Action: gets a dict of items on this dataset
     #
-    # Pre: 
-    # Post: 
+    # Pre:
+    # Post:
     #
     # Params: property - the property to search for
     #
@@ -311,7 +311,7 @@ class ZFSDataset:
         grepCmd = ['grep', '^' + property + ':']
         sedCmd = ['sed', 's/^' + property + '://']
         sortCmd = ['sort', '-k', '1', '-n']
-        
+
         zfsResult = Popen(zfsCmd, stdout=PIPE)
         grepResult = Popen(grepCmd, stdin=zfsResult.stdout, stdout=PIPE)
         sedResult = Popen(sedCmd, stdin=grepResult.stdout, stdout=PIPE)
@@ -319,7 +319,7 @@ class ZFSDataset:
         stdOut, stdErr = sortResult.communicate()
 
         zfsResult.wait()
-        
+
         # convert stdout to string
         stdOutString = stdOut.decode("utf-8").strip()
 
@@ -328,19 +328,19 @@ class ZFSDataset:
 
         # loop over the results
         for line in stdOutString.splitlines():
-            
+
             # split out the key and value
             key = line.split()[0]
             value = line.split()[1]
-            
+
             # add it to the array
             returnArray[key] = value
-        
+
         return returnArray
-    
+
     # Action: turn object into json and append to ZFS array
     #
-    # Pre: 
+    # Pre:
     # Post: value has been turned into minified json and appended to array in ZFS
     #
     # Params: property - the property to append to
@@ -349,10 +349,10 @@ class ZFSDataset:
     # Return: True if success False otherwise
     def appendJsonArray(self, property, value):
         return self.appendArray(property, json.dumps(value, separators=(',',':')))
-    
+
     # Action: retrieves a JSON object from ZFS and returns as a list
     #
-    # Pre: 
+    # Pre:
     # Post: value has been turned into python objects and returned in a list
     #
     # Params: property - the property to search for
@@ -360,13 +360,13 @@ class ZFSDataset:
     # Return: List of json objects
     def getJsonArray(self, property):
         array = self.getArray(property)
-        
+
         returnList = []
-        
+
         # loop over the items turning them into objects
         for key, value in array.items():
             returnList.append(json.loads(value))
-        
+
         return returnList
 
     # Action: unsets a ZFS array
@@ -379,7 +379,7 @@ class ZFSDataset:
     # Return: True if success False otherwise
     def unsetArray(self, property):
         array = self.getArray(property)
-        
+
         # loop over the results, deleting everything
         for key,value in array.items():
             # remove the item
@@ -419,7 +419,7 @@ class ZFSDataset:
         #zfs send -p zroot/tredly/ptn/default/cntr/ugCiYHvR@test | xz -zf - > directory.tar.xz
         zfsCmd = ['zfs', 'send', '-p', self.dataset + '@' + snapshotName]
         xzCmd = ['xz', '-zf', '-']
-        
+
         # open the file to take stdout
         with open(filePath, 'w') as output:
             # run the commands
@@ -428,5 +428,5 @@ class ZFSDataset:
             xzResult = Popen(xzCmd, stdin=zfsResult.stdout, stdout=output)
 
         stdOut, stdErr = xzResult.communicate()
-        
+
         return (xzResult.returncode == 0)

@@ -65,23 +65,23 @@ bsdinstall checksum
 bsdinstall distextract
 bsdinstall rootpass
 
-# set root to use bash shell. Bash shell does not exist yet so redirect stderr to null
-chroot $BSDINSTALL_CHROOT /usr/sbin/pw usermod root -s /usr/local/bin/bash 2>/dev/null
-
 echo ""
 echo ""
 
 # set up tredly user and password with bash shell
 echo "Setting up tredly user"
-chroot $BSDINSTALL_CHROOT /usr/sbin/pw useradd -n tredly -s /usr/local/bin/bash -m -G wheel 2> /dev/null
+chroot $BSDINSTALL_CHROOT /usr/sbin/pw useradd -n tredly -m -G wheel 2> /dev/null
 chroot $BSDINSTALL_CHROOT passwd tredly
 bsdinstall config
 bsdinstall netconfig
 
 echo "Copying FreeBSD files for Tredly installation"
 mkdir -p $BSDINSTALL_CHROOT/tmp/tredlyfiles/bsd
-cp -R /usr/freebsd-dist/* $BSDINSTALL_CHROOT/tmp/tredlyfiles/bsd
-
+cd $BSDINSTALL_CHROOT/tmp/tredlyfiles/bsd
+fetch /usr/freebsd-dist/MANIFEST
+fetch /usr/freebsd-dist/base.txz
+fetch /usr/freebsd-dist/lib32.txz
+fetch /usr/freebsd-dist/src.txz
 
 #!/bin/sh
 # the following script is run in the chrooted environment
@@ -104,19 +104,6 @@ echo "fdesc                   /dev/fd fdescfs rw              0       0" >> /etc
 # set the path
 export PATH="${PATH}:/usr/local/bin:/usr/local/sbin"
 
-echo "Installing Tredly"
-env ASSUME_ALWAYS_YES=YES pkg bootstrap
-env ASSUME_ALWAYS_YES=YES pkg install -y git bash
-
-mkdir -p /tredlyinstall
-/usr/local/bin/git clone https://github.com/tredly/tredly.git /tredlyinstall
-#/usr/local/bin/git clone https://github.com/vuid-com/tredly.git -b integration /tredlyinstall
-/tredlyinstall/install.sh
-
-# clean up the install directories
-rm -rf /tmp/tredlyfiles
-rm -rf /tredlyinstall
-
 # set MOTD
 echo "Creating /etc/motd"
 mv /etc/motd /etc/motd-backup
@@ -131,6 +118,22 @@ cat << MOTD > /etc/motd
                www.tredly.com
 
 MOTD
+
+echo "Installing Tredly"
+env ASSUME_ALWAYS_YES=YES pkg bootstrap
+env ASSUME_ALWAYS_YES=YES pkg install -y git bash
+
+mkdir -p /tredlyinstall
+/usr/local/bin/git clone https://github.com/tredly/tredly.git /tredlyinstall
+/tredlyinstall/install.sh
+
+# clean up the install directories
+rm -rf /tmp/tredlyfiles
+rm -rf /tredlyinstall
+
+# set users use bash shell
+/usr/sbin/pw usermod root -s /usr/local/bin/bash
+/usr/sbin/pw usermod tredly -s /usr/local/bin/bash
 
 # set nameservers
 {
