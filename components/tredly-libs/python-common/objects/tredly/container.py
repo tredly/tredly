@@ -2045,11 +2045,8 @@ class Container:
     #
     # Return: True if succeeded, False otherwise
     def runCmd(self, command):
-        # use shlex to split the command string, which will preserve quotes for us
-        splitCmd = shlex.split(command)
-
         # add a jexec to the start of the command
-        command = ['jexec', 'trd-' + self.uuid] + splitCmd
+        command = ['jexec', 'trd-' + self.uuid, 'sh', '-c', command]
 
         # run the command
         process = Popen(command,  stdin=PIPE, stdout=PIPE, stderr=PIPE)

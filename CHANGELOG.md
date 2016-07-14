@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.1.3]
+#### Changed
+- Tredly-build - last hotfix did not fix the issue, so the change has been reverted.
+
+#### Added
+- tredly-parse - changes patterns in tredlyfiles. This component still requires an installer.
+
 ## [1.1.2]
 #### Fixed
 - Tredly-build- updated runCmd() to remove "sh -c" - fixes tredly/tredly#60
