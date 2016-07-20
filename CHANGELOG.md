@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.1.5]
+#### Fixed
+- Isoinstaller: remove "hostname tredly" line from tredlyinstall tredly/tredly#80
+- Tredly-build: Fix issue with stdout/stderr encoding in Container.runCmd()
+
 ## [1.1.4]
 #### Fixed
 - Tredly-build: Changed Container.runCmd() to use temporary files instead of PIPE for stdout and stderr. Fixes tredly/tredly#60

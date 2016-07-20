@@ -12,6 +12,7 @@ from includes.util import *
 from includes.defines import *
 from includes.output import *
 import tempfile
+import io
 
 from objects.zfs.zfs import ZFSDataset
 from objects.ip4.netinterface import NetInterface
@@ -2068,16 +2069,10 @@ class Container:
         process.communicate()
 
         # open temp files for reading
-        stdOutFile = open(stdOutPath, 'r')
-        stdErrFile = open(stdErrPath, 'r')
-
-        # read stdout and stderr from temp files
-        stdOut = stdOutFile.read()
-        stdErr = stdErrFile.read()
-
-        # close the files
-        stdOutFile.close()
-        stdErrFile.close()
+        with io.open(stdOutPath,'r', encoding='utf8') as stdOutFile:
+            stdOut = stdOutFile.read()
+        with io.open(stdErrPath,'r', encoding='utf8') as stdErrFile:
+            stdErr = stdErrFile.read()
 
         # delete the files
         os.remove(stdOutPath)

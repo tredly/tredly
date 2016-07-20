@@ -18,7 +18,7 @@ declare -a _SUBCOMMANDS
 declare -A _FLAGS
 
 # versioning
-_VERSIONNUMBER="1.1.4"
+_VERSIONNUMBER="1.1.5"
 _VERSIONDATE="July 20 2016"
 
 _SHOW_HELP=false

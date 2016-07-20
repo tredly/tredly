@@ -95,9 +95,6 @@ export TREDLYISOINSTALLER="true"
     echo 'namesever 8.8.4.4'
 } >> /etc/resolv.conf
 
-# set a default hostname
-hostname tredly
-
 # set up bash fdesc in fstab
 echo "fdesc                   /dev/fd fdescfs rw              0       0" >> /etc/fstab
 
