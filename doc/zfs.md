@@ -11,7 +11,7 @@ Using this methodology, it is possible to also support associative arrays, howev
 * com.tredly:default_release_name - The name of the release to use by default when building new containers
 
 ## Host Property Arrays
-None
+* None
 
 ## Container Properties
 * com.tredly:releasename - the release (distro/version) that this container uses
@@ -75,7 +75,7 @@ None
 * com.tredly.udpoutports - array of udpoutports from tredlyfile
 * com.tredly.jsonurls - jsonified URL objects
 * com.tredly.url - array of translated urls from tredlyfile
-* com.tredly.url_cert - array of translated urlCerts from tredlyfile 
+* com.tredly.url_cert - array of translated urlCerts from tredlyfile
 * com.tredly.redirect_url - array of redirected urls set up for this container
 * com.tredly.redirect_url_cert - array of certificates for redirected (https) urls set up for this container
 * com.tredly.dns - array of dns servers this container uses
@@ -89,7 +89,7 @@ None
 
 ## Partition Properties
 * quota - max disk usage
-* com.tredly:partitionname - name of partition
+* com.tredly:partition [DEPRECATED] - name of partition. Note that this is now extracted from the dataset name as of version 1.1.4
 * com.tredly:maxcpu - max amount of cpu for this partition
 * com.tredly:maxram - max amount of ram for this partition
 * com.tredly:nginx_whitelist_accessfile - the path to the nginx whitelist access file for this partition

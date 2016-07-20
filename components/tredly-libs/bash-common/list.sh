@@ -51,9 +51,11 @@ function list_containers() {
         # whether or not to print out this line
         local _printLine="true"
 
+        # extract the partition name from the dataset name
+        local _partition=$( rcut "${_dataset}" "${ZFS_TREDLY_PARTITIONS_DATASET}/" | cut -d '/' -f 1 )
+
         # loop over the containers and get their details
         local _uuid=$( echo "${_dataset}" | rev | cut -d'/' -f 1 | rev )
-        local _partition=$( zfs_get_property "${_dataset}" "${ZFS_PROP_ROOT}:partition" )
         local _containerName=$( zfs_get_property "${_dataset}" "${ZFS_PROP_ROOT}:containername" )
         local _buildEpoch=$( zfs_get_property "${_dataset}" "${ZFS_PROP_ROOT}:buildepoch" )
         local _containerVersion=$( zfs_get_property "${_dataset}" "${ZFS_PROP_ROOT}:containerversion" )
@@ -68,7 +70,6 @@ function list_containers() {
         # get state from ZFS
         local _state=$( zfs_get_property "${_dataset}" "${ZFS_PROP_ROOT}:containerstate" )
 
-        
         # if the state is empty then check for jid
         if [[ "${_state}" == '-' ]]; then
             if [ -z "${_jid}" ]; then
@@ -77,8 +78,8 @@ function list_containers() {
                 _state="up"
             fi
         fi
-        
-        
+
+
         # if the ip address was empty, replace with a dash
         if [[ -z "${_ip4}" ]]; then
             _ip4='-'

@@ -11,10 +11,23 @@ show_help "Available Commands:
 
     Examples:
         $(basename "$0") stop container xYH2KnI8
+
+    containers <partitionname>
+    ---------
+    Description:
+        Stops all running containers. If partitionname is given then only
+        the containers within that partition will be stopped.
+
+    Examples:
+        $(basename "$0") stop containers
+        $(basename "$0") stop containers mypartition
 "
 
 case "${_SUBCOMMANDS[0]}" in
     container)
+        tredly-build stop ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+    ;;
+    containers)
         tredly-build stop ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
     ;;
     *)

@@ -50,29 +50,29 @@ function partition_create() {
 
         e_note "Creating ZFS dataset"
     fi
-    
+
     _exitCode=0
-    
+
     # create the partition
     zfs_create_dataset "${ZFS_TREDLY_PARTITIONS_DATASET}/${_partitionName}" "${TREDLY_PARTITIONS_MOUNT}/${_partitionName}"
     _exitCode=$(( ${_exitCode} & $? ))
-    
+
     # and the containers dataset
     zfs_create_dataset "${ZFS_TREDLY_PARTITIONS_DATASET}/${_partitionName}/${TREDLY_CONTAINER_DIR_NAME}" "${TREDLY_PARTITIONS_MOUNT}/${_partitionName}/${TREDLY_CONTAINER_DIR_NAME}"
     _exitCode=$(( ${_exitCode} & $? ))
-    
+
     # and the data dataset
     zfs_create_dataset "${ZFS_TREDLY_PARTITIONS_DATASET}/${_partitionName}/${TREDLY_PTN_DATA_DIR_NAME}" "${TREDLY_PARTITIONS_MOUNT}/${_partitionName}/${TREDLY_PTN_DATA_DIR_NAME}"
     _exitCode=$(( ${_exitCode} & $? ))
-    
+
     # and the remote containers dataset
     zfs_create_dataset "${ZFS_TREDLY_PARTITIONS_DATASET}/${_partitionName}/${TREDLY_PTN_REMOTECONTAINERS_DIR_NAME}" "${TREDLY_PARTITIONS_MOUNT}/${_partitionName}/${TREDLY_PTN_REMOTECONTAINERS_DIR_NAME}"
     _exitCode=$(( ${_exitCode} & $? ))
-    
+
     # and the persistent storage dataset
     zfs_create_dataset "${ZFS_TREDLY_PARTITIONS_DATASET}/${_partitionName}/${TREDLY_PERSISTENT_STORAGE_DIR_NAME}" "${TREDLY_PARTITIONS_MOUNT}/${_partitionName}/${TREDLY_PERSISTENT_STORAGE_DIR_NAME}"
     _exitCode=$(( ${_exitCode} & $? ))
-    
+
     # create some default directories within the data dataset
     mkdir -p "${TREDLY_PARTITIONS_MOUNT}/${_partitionName}/${TREDLY_PTN_DATA_DIR_NAME}/credentials"
     mkdir -p "${TREDLY_PARTITIONS_MOUNT}/${_partitionName}/${TREDLY_PTN_DATA_DIR_NAME}/scripts"
@@ -111,7 +111,7 @@ function partition_create() {
         if [[ "${_silent}" != "true" ]]; then
             e_note "Applying CPU value ${_partitionCPU}"
         fi
-        
+
         # check if it was a percentage
         if [[ "${_partitionCPU: -1}" != '%' ]]; then
             _partitionCPU=$( rtrim "${_partitionCPU}" "%" )
@@ -155,7 +155,7 @@ function partition_create() {
         if [[ "${_silent}" != "true" ]]; then
             e_note "Applying whitelist."
         fi
-        
+
         # convert the whitelist into an array to pass
         local -a _whitelistArray
         IFS=',' read -ra _whitelistArray <<< "${_partitionIp4Whitelist}"
@@ -416,8 +416,8 @@ function partition_destroy() {
     zfs destroy -rf "${ZFS_TREDLY_PARTITIONS_DATASET}/${_partitionName}"
 
     local _exitCode=$?
-    
-    # re-init the zfs datasets 
+
+    # re-init the zfs datasets
     zfs_init
 
     if [[ ${_exitCode} -eq 0 ]]; then
@@ -462,6 +462,11 @@ function partition_destroy_containers() {
         exit_with_error "Please include a partition name."
     fi
 
+    # make sure the partition exists
+    if ! partition_exists "${_partitionName}"; then
+        exit_with_error "Partition ${_partitionName} does not exist."
+    fi
+
     # check if there are any containers on this partition
     local _containerList=$( zfs_get_all_containers "${_partitionName}" )
 
@@ -474,7 +479,7 @@ function partition_destroy_containers() {
         for _dataset in ${_containerList}; do
             # extract the UUID from the dataset as the uuid in zfs may not be set
             _uuid=$( echo "${_dataset}" | rev | cut -d/ -f 1 | rev )
-            
+
             _name=$( zfs_get_property "${_dataset}" "${ZFS_PROP_ROOT}:containername" )
 
             _uuidsNames=$( echo -e "${_uuidsNames}\n${_uuid}^${_name}")
@@ -574,8 +579,10 @@ function partition_list() {
 
     # loop over the datasets
     for _dataset in ${_datasets[@]}; do
-        # get the data
-        _partitionName=$( zfs_get_property "${_dataset}" "${ZFS_PROP_ROOT}:partition" )
+        # extract partition name from dataset name
+        _partitionName=$( rcut "${_dataset}" "${ZFS_TREDLY_PARTITIONS_DATASET}/" | cut -d '/' -f 1 )
+
+        # get the data from zfs
         _usedSpace=$( zfs_get_property "${_dataset}" "used" )
         _quota=$( zfs_get_property "${_dataset}" "quota" )
         _maxCPU=$( zfs_get_property "${_dataset}" "${ZFS_PROP_ROOT}:maxcpu" )

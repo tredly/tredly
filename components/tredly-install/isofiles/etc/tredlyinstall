@@ -58,13 +58,13 @@ export ZFSBOOT_BOOTFS_NAME=default
 export ZFSINTERACTIVE=true
 
 bsdinstall keymap
-bsdinstall hostname
+#bsdinstall hostname
 bsdinstall zfsboot
 bsdinstall mount
 bsdinstall checksum
 bsdinstall distextract
 bsdinstall rootpass
-
+bsdinstall time
 echo ""
 echo ""
 

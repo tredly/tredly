@@ -29,6 +29,6 @@ case "${_SUBCOMMANDS[0]}" in
         service nginx status
     ;;
     *)
-        exit_with_error "Unknown config command '${_SUBCOMMANDS[0]}'"
+        exit_with_error "Unknown status command '${_SUBCOMMANDS[0]}'"
     ;;
 esac

@@ -23,6 +23,6 @@ case "${_SUBCOMMANDS[0]}" in
         tredly-build start ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
     ;;
     *)
-        exit_with_error "Unknown create start \"${_SUBCOMMANDS[0]}\""
+        exit_with_error "Unknown start command \"${_SUBCOMMANDS[0]}\""
     ;;
 esac

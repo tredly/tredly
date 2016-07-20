@@ -2,6 +2,30 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.1.4]
+#### Fixed
+- Tredly-build: Changed Container.runCmd() to use temporary files instead of PIPE for stdout and stderr. Fixes tredly/tredly#60
+- Tredly-build: Copy from container directory now works correctly tredly/tredly#75
+- Tredly-build: Added try catch block to catch errors within layer 7 proxy file for half built/destroyed container tredly/tredly#70
+- Tredly-build: Show error message when uuid not specified for "tredly-build start container" tredly/tredly#67
+- Tredly-build: Ensure a defaultrelease exists for create and replace tredly/tredly#54
+- Tredly: Added check to ensure partition exists before attempting to destroy containers within tredly/tredly#71
+
+#### Added
+- Tredly-libs: Added ability to select other shells for Container.createScript()
+- Tredly-libs: added function TredlyHost.getContainerNameFromUUID()
+- Tredly-build: Added command "tredly stop containers <partitionname>" If partitionname is blank then all containers are stopped. User will be prompt before stopping these containers.
+- Tredly-libs: Added TredlyHost.containerIsRunning() and TredlyHost.getContainerNameFromUUID()
+
+#### Changed
+- Tredly-build: Better tredlyfile version error message tredly/tredly#63
+- Tredly: Changed list commands to pull partition name from the full dataset name Fixes tredly/tredly#59
+- Docs: Formatted ipfw.md for markdown
+- Tredly: Deprecated com.tredly:partition within partitions
+- Isoinstaller: Remove bsdinstall hostname - let tredly handle this fixes tredly/tredly#69
+- Isoinstaller: Add bsdinstall time back in
+- Tredly-libs: Moved onstop/ondestroy commands so that we can handle errors in future
+
 ## [1.1.3]
 #### Changed
 - Tredly-build - last hotfix did not fix the issue, so the change has been reverted.

@@ -93,7 +93,10 @@ actionArgs['path'] = None
 
 # see if --location was passed and check if its a local or remote path
 # if not set then assume current directory for path
-if (args.location is not None):
+if (args.location is None):
+    # no location given, use the current directory
+    actionArgs['path'] = "./"
+else:
     # support http, https, and ftp
     if (args.location.startswith('http://') or args.location.startswith('https://') or args.location.startswith('ftp://')):
 
@@ -142,7 +145,6 @@ if (args.location is not None):
                 # now set the path to be where we extracted the file to and proceed with building
                 actionArgs['path'] = destinationDir + '/container'
 
-
         except:
             e_error("Failed to extract the file")
             exit(1)
@@ -154,37 +156,37 @@ if (args.location is not None):
         e_error("Directory " + args.location + " not found")
         exit(1)
 
-# if path was supplied then find the tredlyfile
-if (actionArgs['path'] is not None):
-    # find the tredlyfile
-    actionArgs['path'] = findTredlyFile(actionArgs['path'])
+# find the tredlyfile
+tredlyFilePath = findTredlyFile(actionArgs['path'])
 
-    if (actionArgs['path'] is None):
-        # error and exit
-        e_error("Could not find a Tredly file at this location")
-        exit(1)
+# make sure we received a tredly file path if we are creating or replacing
+if (tredlyFilePath is None) and ((args.action == "create") or (args.action == "replace")):
+    # error and exit
+    e_error("Could not find a Tredly file at " + actionArgs['path'])
+    exit(1)
 else:
-    actionArgs['path'] = findTredlyFile('./')
+    # tredlyfile found, so assign actionargs path
+    actionArgs['path'] = tredlyFilePath
 
 # make sure the base ZFS datasets are present
 zfsTredly = ZFSDataset(ZFS_TREDLY_DATASET)
 if (not zfsTredly.exists()):
-    e_error("Dataset " + ZFS_TREDLY_DATASET + " does not exist. Please run tredly init")
+    e_error("Dataset " + ZFS_TREDLY_DATASET + " does not exist. Please run tredly init.")
     exit(1)
 
 zfsReleases = ZFSDataset(ZFS_TREDLY_RELEASES_DATASET)
 if (not zfsReleases.exists()):
-    e_error("Dataset " + ZFS_TREDLY_RELEASES_DATASET + " does not exist. Please run tredly init")
+    e_error("Dataset " + ZFS_TREDLY_RELEASES_DATASET + " does not exist. Please run tredly init.")
     exit(1)
 
 zfsPartitions = ZFSDataset(ZFS_TREDLY_PARTITIONS_DATASET)
 if (not zfsPartitions.exists()):
-    e_error("Dataset " + ZFS_TREDLY_PARTITIONS_DATASET + " does not exist. Please run tredly init")
+    e_error("Dataset " + ZFS_TREDLY_PARTITIONS_DATASET + " does not exist. Please run tredly init.")
     exit(1)
 
 zfsDefaultPartition = ZFSDataset(ZFS_TREDLY_PARTITIONS_DATASET + '/' + TREDLY_DEFAULT_PARTITION)
 if (not zfsDefaultPartition.exists()):
-    e_error("Dataset " + ZFS_TREDLY_PARTITIONS_DATASET + '/' + TREDLY_DEFAULT_PARTITION + " does not exist. Please run tredly init")
+    e_error("Dataset " + ZFS_TREDLY_PARTITIONS_DATASET + '/' + TREDLY_DEFAULT_PARTITION + " does not exist. Please run tredly init.")
     exit(1)
 
 # process the config file

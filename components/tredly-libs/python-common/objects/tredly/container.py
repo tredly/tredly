@@ -11,6 +11,7 @@ import shlex
 from includes.util import *
 from includes.defines import *
 from includes.output import *
+import tempfile
 
 from objects.zfs.zfs import ZFSDataset
 from objects.ip4.netinterface import NetInterface
@@ -1371,7 +1372,7 @@ class Container:
         # check if an onstart script is set and if so, run it
         if (self.onStartScript is not None):
             e_note("Running onStart script")
-            if (self.runCmd('sh -c "' + self.onStartScript + '"')):
+            if (self.runCmd('sh "' + self.onStartScript + '"')):
                 e_success("Success")
             else:
                 e_error("Failed")
@@ -1467,6 +1468,24 @@ class Container:
         if (not self.isRunning()):
             return True
 
+        # if the container is running then run the onstop/ondestroy commands
+        if (self.isRunning()):
+            # check if an onstop script is set and if so, run it
+            if (self.onStopScript is not None):
+                e_note("Running onStop script")
+                if (self.runCmd('sh "' + self.onStopScript + '"')):
+                    e_success("Success")
+                else:
+                    e_error("Failed")
+
+            # run the ondestroy script if the destroy flag is set and we have a destroy script
+            if (destroying) and (self.onDestroyScript is not None):
+                e_note("Running onDestroy script")
+                if (self.runCmd('sh "' + self.onDestroyScript + '"')):
+                    e_success("Success")
+                else:
+                    e_error("Failed")
+
         # remove container from dns
         returnCode = True
         e_note("Removing container from DNS")
@@ -1536,10 +1555,14 @@ class Container:
 
                 # check if the access file for this container is included in this location block and remove it
                 # copy the list
-                includeItems = list(servernameFile.blocks['server'][0].blocks['location'][urlDirectory].attrs['include'].items())
-                for key, value in includeItems:
-                    if (value == NGINX_ACCESSFILE_DIR + '/' + self.uuid):
-                        del servernameFile.blocks['server'][0].blocks['location'][urlDirectory].attrs['include'][key]
+                try:
+                    includeItems = list(servernameFile.blocks['server'][0].blocks['location'][urlDirectory].attrs['include'].items())
+                    for key, value in includeItems:
+                        if (value == NGINX_ACCESSFILE_DIR + '/' + self.uuid):
+                            del servernameFile.blocks['server'][0].blocks['location'][urlDirectory].attrs['include'][key]
+                except KeyError:
+                    # doesnt exist so pass
+                    pass
 
                 # if no other containers are using this url then delete the location block
                 if (len(containersWithUrl) == 0):
@@ -1557,7 +1580,7 @@ class Container:
                             except:
                                 e_warning("Error docs location not found")
                     except:
-                        print('Location ' + urlDirectory + ' not found')
+                        e_warning('Layer 7 proxy location ' + urlDirectory + ' not found')
 
                 if (not servernameFile.saveFile()):
                     e_error("Failed to save server name file")
@@ -1678,22 +1701,7 @@ class Container:
 
         # if the container is running then stop it
         if (self.isRunning()):
-            # check if an onstop script is set and if so, run it
-            if (self.onStopScript is not None):
-                e_note("Running onStop script")
-                if (self.runCmd('sh -c "' + self.onStopScript + '"')):
-                    e_success("Success")
-                else:
-                    e_error("Failed")
-
-            # run the ondestroy script if the destroy flag is set and we have a destroy script
-            if (destroying) and (self.onDestroyScript is not None):
-                e_note("Running onDestroy script")
-                if (self.runCmd('sh -c "' + self.onDestroyScript + '"')):
-                    e_success("Success")
-                else:
-                    e_error("Failed")
-
+            # stop the container
             e_note("Stopping Container " + self.name)
             cmd = ['jail', '-r', 'trd-' + self.uuid]
             process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
@@ -2011,7 +2019,7 @@ class Container:
                     e_note('Copying Container Data "' + createCmd['source'] + '" to ' + createCmd['target'])
 
                     # create the path to the source file/directory
-                    source = builtins.tredlyFile.fileLocation + createCmd['source']
+                    source = builtins.tredlyFile.fileLocation.rstrip('/') + '/' + createCmd['source']
 
                 # set up the target
                 target = self.mountPoint + '/root' + createCmd['target']
@@ -2023,9 +2031,9 @@ class Container:
 
                 # Copy the data in
                 cmd = ['cp', '-R', source, target]
-
                 process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
                 stdOut, stdErr = process.communicate()
+
                 if (process.returncode != 0):
                     # errored
                     e_error("Failed to copy " + source + " to " + createCmd['target'])
@@ -2045,16 +2053,41 @@ class Container:
     #
     # Return: True if succeeded, False otherwise
     def runCmd(self, command):
-        # add a jexec to the start of the command
+
+        # use temporary files instead of PIPE so that processes dont hang (eg "service postgresql start")
+        stdOutFd, stdOutPath = tempfile.mkstemp()
+        stdErrFd, stdErrPath = tempfile.mkstemp()
+
+        # add a jexec to the start of the command and run it in a shell inside the container
         command = ['jexec', 'trd-' + self.uuid, 'sh', '-c', command]
 
-        # run the command
-        process = Popen(command,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
-        stdOut, stdErr = process.communicate()
+        # run the command, sending the output to our temporary files
+        process = Popen(command, stdin=PIPE, stdout=stdOutFd, stderr=stdOutFd)
+
+        # get return code
+        process.communicate()
+
+        # open temp files for reading
+        stdOutFile = open(stdOutPath, 'r')
+        stdErrFile = open(stdErrPath, 'r')
+
+        # read stdout and stderr from temp files
+        stdOut = stdOutFile.read()
+        stdErr = stdErrFile.read()
+
+        # close the files
+        stdOutFile.close()
+        stdErrFile.close()
+
+        # delete the files
+        os.remove(stdOutPath)
+        os.remove(stdErrPath)
+
+        # if it errored, then print out stdout and stderr
         if (process.returncode != 0):
-            # errored
-            print(stdOut.decode('UTF-8'))
-            print(stdErr.decode('UTF-8'))
+            # print stdout and stderr
+            print(stdOut)
+            print(stdErr)
             return False
 
         return True
@@ -2066,16 +2099,17 @@ class Container:
     #
     # Params: filePath - the path to the file to create
     #         commands - a list of commands to run
+    #         env - the shell to use
     #
     # Return: True if succeeded, False otherwise
-    def createScript(self, filePath, commands):
+    def createScript(self, filePath, commands, env = 'sh'):
         # set the full path for the host
         fullFilePath = self.mountPoint + '/root' + filePath
 
         # open the onstop script and write in the commands
         with open(fullFilePath, "w") as script:
             # put the shebang into the file
-            print("#!/usr/bin/env sh", file=script)
+            print("#!/usr/bin/env " + env, file=script)
 
             # loop over the commands
             for cmd in commands:
@@ -2139,7 +2173,6 @@ class Container:
 
         e_note("Changing UID of files owned by pgsql")
         # change the ownership of all files with owner uid 70
-        #eval "jexec ${jid} sh -c 'find / -user 70 -exec chown -h pgsql {} \;'"
         cmd = ['jexec', 'trd-' + self.uuid, 'find', '/', '-user', '70', '-exec', 'chown', '-h', 'pgsql', '{}', ';']
         process = Popen(cmd,  stdin=PIPE, stdout=PIPE, stderr=PIPE)
         stdOut, stdErr = process.communicate()
