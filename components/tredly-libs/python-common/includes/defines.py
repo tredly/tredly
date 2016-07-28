@@ -49,8 +49,8 @@ global VERSON_NUMBER
 global VERSION_DATE
 
 # set version/date
-VERSION_NUMBER = "1.1.5"
-VERSION_DATE = "July 20 2016"
+VERSION_NUMBER = "1.1.6"
+VERSION_DATE = "July 28 2016"
 
 # ZFS Dataset locations
 ZFS_ROOT = "zroot"
@@ -76,7 +76,7 @@ TREDLY_CONTAINER_DIR_NAME = "cntr"
 TREDLY_PTN_DATA_DIR_NAME = "data"
 TREDLY_PERSISTENT_STORAGE_DIR_NAME = "psnt"
 TREDLY_CONTAINER_LOG_DIR = "log"
-TREDLY_PTN_REMOTECONTAINERS_DIR_NAME="remotecontainers"
+TREDLY_PTN_REMOTECONTAINERS_DIR_NAME="containers"
 
 # Nginx Proxy
 NGINX_BASE_DIR = "/usr/local/etc/nginx"

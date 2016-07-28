@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.1.6]
+#### Fixed
+- Copying individual files from partition now works correctly
+
+#### Changed
+- Renamed "remotecontainers" in partition to "containers"
+
 ## [1.1.5]
 #### Fixed
 - Isoinstaller: remove "hostname tredly" line from tredlyinstall tredly/tredly#80

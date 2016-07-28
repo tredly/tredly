@@ -35,7 +35,7 @@ declare TREDLY_DEFAULT_PARTITION="default"
 declare TREDLY_CONTAINER_DIR_NAME="cntr"
 declare TREDLY_PTN_DATA_DIR_NAME="data"
 declare TREDLY_PERSISTENT_STORAGE_DIR_NAME="psnt"
-declare TREDLY_PTN_REMOTECONTAINERS_DIR_NAME="remotecontainers"
+declare TREDLY_PTN_REMOTECONTAINERS_DIR_NAME="containers"
 
 
 # Nginx Proxy

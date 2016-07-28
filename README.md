@@ -1,7 +1,7 @@
 # Tredly
 
-- Version: v1.1.5
-- Date: July 20 2016
+- Version: v1.1.6
+- Date: July 28 2016
 - [Release notes](https://github.com/tredly/tredly/blob/master/CHANGELOG.md)
 - [GitHub repository](https://github.com/tredly/tredly)
 
@@ -32,10 +32,10 @@ To install Tredly, your server must be running **FreeBSD 10.3 (or above) as Root
 
 1. Follow the steps outlined here <http://www.tredly.com/docs/?docs=getting-started/installation> to install and set up your host for use with Tredly.
 2. Clone the Tredly repository to the desired location (we suggest `/tmp`):
-```
-    git clone git://github.com/tredly/tredly.git /tmp
-    cd /tmp/tredly
-```
+    ```
+        git clone git://github.com/tredly/tredly.git /tmp
+        cd /tmp/tredly
+        ```
 3. Finally run `./install.sh` to install.
 
 ### Via ISO

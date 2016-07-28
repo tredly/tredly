@@ -2015,7 +2015,12 @@ class Container:
                     e_note('Copying Partition Data "' + createCmd['source'] + '" to ' + createCmd['target'])
 
                     # create the path to the source file/directory
-                    source = TREDLY_PARTITIONS_MOUNT + "/" + self.partitionName + "/" + TREDLY_PTN_DATA_DIR_NAME + "/" + createCmd['source'].lstrip('partition/').rstrip('/') + '/'
+                    source = TREDLY_PARTITIONS_MOUNT + "/" + self.partitionName + "/" + TREDLY_PTN_DATA_DIR_NAME + "/" + createCmd['source'].split('/', 1)[-1].rstrip()
+
+                    # check if its a directory
+                    if (os.path.isdir(source)):
+                        # its a dir so add a trailing slash
+                        source = source + '/'
                 else:
                     e_note('Copying Container Data "' + createCmd['source'] + '" to ' + createCmd['target'])
 
@@ -2038,7 +2043,7 @@ class Container:
                 if (process.returncode != 0):
                     # errored
                     e_error("Failed to copy " + source + " to " + createCmd['target'])
-                    print(stdErr)
+                    print(stdErr.decode('UTF-8').rstrip())
                 else:
                     # Success
                     e_success("Success")
