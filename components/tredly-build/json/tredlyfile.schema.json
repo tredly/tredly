@@ -9,6 +9,12 @@
             "minimum": 1,
             "maximum": 65535
         },
+        "validAnyPort": {
+            "type": "string",
+            "enum": [
+                "any"
+            ]
+        },
         "positiveInteger": {
             "type": "integer",
             "minimum": 0
@@ -53,7 +59,14 @@
                     "type": "array",
                     "uniqueItems": true,
                     "items": {
-                        "$ref": "#/definitions/validPort"
+                        "oneOf": [
+                            {
+                                "$ref": "#/definitions/validPort"
+                            },
+                            {
+                                "$ref": "#/definitions/validAnyPort"
+                            }
+                        ]
                     },
                     "default": {}
                 },
@@ -61,7 +74,14 @@
                     "type": "array",
                     "uniqueItems": true,
                     "items": {
-                        "$ref": "#/definitions/validPort"
+                        "oneOf": [
+                            {
+                                "$ref": "#/definitions/validPort"
+                            },
+                            {
+                                "$ref": "#/definitions/validAnyPort"
+                            }
+                        ]
                     },
                     "default": {}
                 }
