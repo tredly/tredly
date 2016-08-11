@@ -20,7 +20,7 @@ show_help "Available Commands:
 
     Examples:
         $(basename "$0") destroy containers customer1
-        
+
     partition
     ---------
     Description:
@@ -43,7 +43,7 @@ case "${_SUBCOMMANDS[0]}" in
     container)
         tredly-build destroy ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
     ;;
-    
+
     containers)
         partition_destroy_containers "${_SUBCOMMANDS[1]}"
     ;;
@@ -53,7 +53,7 @@ case "${_SUBCOMMANDS[0]}" in
             exit_with_error "Too many arguments received."
         fi
 
-        partition_destroy "${_SUBCOMMANDS[1]}" "true"
+        tredly-host destroy "${_SUBCOMMANDS[@]}"
 
     ;;
     partitions)
@@ -62,7 +62,7 @@ case "${_SUBCOMMANDS[0]}" in
             exit_with_error "Too many arguments received."
         fi
 
-        partition_destroy_all
+        tredly-host destroy "${_SUBCOMMANDS[@]}"
     ;;
     *)
         exit_with_error "Unknown destroy command '${_SUBCOMMANDS[0]}'"

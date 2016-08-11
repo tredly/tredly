@@ -49,7 +49,7 @@ if (createHDD == line):
     TESTS_PASSED.append("Create Partition: set maxHdd")
 else:
     TESTS_FAILED.append("Create Partition: set maxHdd")
-    
+
 line = subprocess.getoutput('zfs get -H -o value com.tredly:maxcpu zroot/tredly/ptn/' + partitionName).strip()
 if (createCPU == line):
     TESTS_PASSED.append("Create Partition: set maxCpu")
@@ -94,7 +94,7 @@ if (process.returncode != 0):
     TESTS_FAILED.append("Modify Partition")
 else:
     TESTS_PASSED.append("Modify Partition")
-    
+
 
 # check that the values were set
 line = subprocess.getoutput('zfs get -H -o value quota zroot/tredly/ptn/' + modifyPartitionName).strip()
@@ -102,7 +102,7 @@ if (modifyHDD == line):
     TESTS_PASSED.append("Modify Partition: set maxHdd")
 else:
     TESTS_FAILED.append("Modify Partition: set maxHdd")
-    
+
 line = subprocess.getoutput('zfs get -H -o value com.tredly:maxcpu zroot/tredly/ptn/' + modifyPartitionName).strip()
 if (modifyCPU == line):
     TESTS_PASSED.append("Modify Partition: set maxCpu")
@@ -127,7 +127,7 @@ if (modifyWhitelist == 'clear'):
         print(whitelistZFS)
 else:
     commonElements = set(modifyWhitelist).intersection(whitelistZFS.values())
-    
+
     if (len(commonElements) != len(createWhitelist)):
         TESTS_PASSED.append("Modify Partition: set whitelist")
     else:

@@ -2,6 +2,25 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.1.8]
+#### Added
+- Tredly-libs: partition.py class now contains a lot more functionality
+- Tredly-libs: container.py added getUptime() function which returns a dict in days/hours/mins/seconds
+- Tredly-libs: added isValidHostname() function to utils
+- Tredly-host: added rc.d script to stop all containers on host shutdown.
+- Docs: Added documentation from tredly docs site to this repo
+
+#### Fixed
+- Tredly-build: Ensure that source fileFolderMapping exists before attempting to build container. Fixes tredly/tredly#85
+- Tredly-build: Don't attempt to stop postgres in the workaround function if it is already stopped. Fixes tredly/tredly#83
+- Readme.md is now formatted correctly
+- Tredly-host: Validation now performed on IP address input for "tredly config host DNS"
+- Tredly-host: Clean up remnant directory of partition after destruction and rename. Closes tredly/tredly#82
+
+#### Changed
+- Tredly-host: Ported destroy partition and destroy partitions to python class
+- Tredly-host: Updated partition destroy output to include number of containers, number of files/folders and disk used. Closes tredly/tredly#94
+
 ## [1.1.7]
 #### Fixed
 - Using the string "any" for in/out ports now works correctly

@@ -410,6 +410,19 @@ class Container:
                 e_error("Missing server.key in " + certPath + ' for cert ' + cert)
                 return False
 
+        # make sure all sources for fileFolderMapping exist
+        for createCmd in self.onCreate:
+            if (createCmd['type'] == "fileFolderMapping"):
+                if (re.match('^partition/', createCmd['source'])):
+                    source = TREDLY_PARTITIONS_MOUNT + "/" + self.partitionName + "/" + TREDLY_PTN_DATA_DIR_NAME + "/" + createCmd['source'].split('/', 1)[-1].rstrip()
+                else:
+                    source = builtins.tredlyFile.fileLocation.rstrip('/') + '/' + createCmd['source']
+
+                # check that the source exists
+                if (not os.path.exists(source)):
+                    e_error("Cannot find fileFolderMapping source " + createCmd['source'])
+                    exit(1);
+
         # End pre flight checks
         #################
 
@@ -2012,7 +2025,7 @@ class Container:
             elif (createCmd['type'] == "fileFolderMapping"):
                 # if first word of the source is "partition" then the file comes from the partition
                 if (re.match('^partition/', createCmd['source'])):
-                    e_note('Copying Partition Data "' + createCmd['source'] + '" to ' + createCmd['target'])
+                    e_note('Copying Partition Data "' + createCmd['source'] + '" to "' + createCmd['target'] + '"')
 
                     # create the path to the source file/directory
                     source = TREDLY_PARTITIONS_MOUNT + "/" + self.partitionName + "/" + TREDLY_PTN_DATA_DIR_NAME + "/" + createCmd['source'].split('/', 1)[-1].rstrip()
@@ -2022,7 +2035,7 @@ class Container:
                         # its a dir so add a trailing slash
                         source = source + '/'
                 else:
-                    e_note('Copying Container Data "' + createCmd['source'] + '" to ' + createCmd['target'])
+                    e_note('Copying Container Data "' + createCmd['source'] + '" to "' + createCmd['target'] + '"')
 
                     # create the path to the source file/directory
                     source = builtins.tredlyFile.fileLocation.rstrip('/') + '/' + createCmd['source']
@@ -2056,9 +2069,10 @@ class Container:
     # Post: the given command has been run within the container
     #
     # Params: command - the command to run (string)
+    #         showOutputOnError - true if you want to print all errors to stdout, false to hide
     #
     # Return: True if succeeded, False otherwise
-    def runCmd(self, command):
+    def runCmd(self, command, showOutputOnError = True):
 
         # use temporary files instead of PIPE so that processes dont hang (eg "service postgresql start")
         stdOutFd, stdOutPath = tempfile.mkstemp()
@@ -2085,9 +2099,10 @@ class Container:
 
         # if it errored, then print out stdout and stderr
         if (process.returncode != 0):
-            # print stdout and stderr
-            print(stdOut)
-            print(stdErr)
+            if (showOutputOnError):
+                # print stdout and stderr
+                print(stdOut)
+                print(stdErr)
             return False
 
         return True
@@ -2195,15 +2210,17 @@ class Container:
     #
     # Return: True if succeeded, False otherwise
     def applyPostgresWorkaroundOnStop(self):
-        e_note("Shutting down and cleaning up postgresql")
+        # check if postgres is running
+        if (self.runCmd("/usr/sbin/service postgresql status", False)):
+            e_note("Shutting down and cleaning up postgresql")
 
-        # stop postgres server
-        if (self.runCmd("/usr/sbin/service postgresql stop")):
-            e_success("Success")
-            return True
-        else:
-            e_error("Failed")
-            return False
+            # it is running so stop postgres server
+            if (self.runCmd("/usr/sbin/service postgresql stop")):
+                e_success("Success")
+                return True
+            else:
+                e_error("Failed")
+                return False
 
 
     # Action: registers any urls that this container responds to in the layer 7 proxy
@@ -2634,3 +2651,35 @@ class Container:
             e_error()
 
         return True
+
+    # Action: Calculate the uptime of this container
+    #
+    # Pre: container exists
+    # Post:
+    #
+    # Params:
+    #
+    # Return: dict with values of int
+    def getUptime(self):
+        # set some default values in case buildepoch doesnt exist
+        uptimeDays = 0
+        uptimeHours = 0
+        uptimeMins = 0
+        uptimeSecs = 0
+
+        # ensure we have a valid value before attempting math or display to user
+        if (self.buildEpoch is not None):
+            now = time.time()
+            uptimeEpoch = int(now) - int(self.buildEpoch)
+
+            # calculate time in days hours mins seconds
+            uptimeMins, uptimeSecs = divmod(uptimeEpoch, 60)
+            uptimeHours, uptimeMins = divmod(uptimeMins, 60)
+            uptimeDays, uptimeHours = divmod(uptimeHours, 24)
+
+        return {
+            'days': uptimeDays,
+            'hours': uptimeHours,
+            'minutes': uptimeMins,
+            'seconds': uptimeSecs
+        }

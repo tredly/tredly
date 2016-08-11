@@ -152,9 +152,23 @@ e_header "Tredly Installation"
 
 ##########
 
+e_note "Installing rc.d scripts"
+_exitCode=0
+
+cp ${_DIR}/os/usr/local/etc/rc.d/tredlycontainers /usr/local/etc/rc.d/
+_exitCode=$(( ${_exitCode} & $? ))
+chmod 555 /usr/local/etc/rc.d/tredlycontainers
+_exitCode=$(( ${_exitCode} & $? ))
+
+if [[ $? -eq 0 ]]; then
+    e_success "Success"
+else
+    e_error "Failed"
+fi
+
+##########
 # Configure /etc/rc.conf
 e_note "Configuring /etc/rc.conf"
-_exitCode=0
 
 # rename the existing rc.conf if it exists
 if [[ -f "/etc/rc.conf" ]]; then

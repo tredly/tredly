@@ -274,6 +274,10 @@ function partition_modify() {
             # remount the dataset
             zfs mount "${_dataset}"
             _exitCode=$(( ${_exitCode} & $? ))
+
+            # remove the old partition directory
+            rmdir "${_oldMountpoint}"
+            _exitCode=$(( ${_exitCode} & $? ))
         done
 
         if [[ ${_exitCode} -eq 0 ]]; then
@@ -423,6 +427,7 @@ function partition_destroy() {
 }
 
 # Destroys ALL partitions
+# TODO: replace this with reuse of the partition destroy in python tredly-host
 function partition_destroy_all() {
     _pNames=$( get_partition_names )
 

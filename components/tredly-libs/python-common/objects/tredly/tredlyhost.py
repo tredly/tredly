@@ -364,3 +364,46 @@ class TredlyHost:
 
         # exit code of 0 == running
         return (result.returncode == 0)
+
+    # Action: initialise the zfs datasets ready for use by tredly
+    #
+    # Pre:
+    # Post: default datasets exist
+    #
+    # Params:
+    #
+    # Return: boolean - True if success, False otherwise
+    def zfsInit(self):
+        return False
+        '''
+        # initialise the zfs datasets ready for use by tredly
+        # TODO: this should probably return something meaningful, at the moment it mimics the bash version's behaviour
+
+        zfsTredlyDataset = ZFSDataset(ZFS_TREDLY_DATASET, TREDLY_MOUNT)
+        # create it if it doesnt already exist
+        if (not zfsTredlyDataset.exists()):
+            zfsTredlyDataset.create()
+
+        zfsDownloadsDataset = ZFSDataset(ZFS_TREDLY_DOWNLOADS_DATASET, TREDLY_DOWNLOADS_MOUNT)
+        # create it if it doesnt already exist
+        if (not zfsDownloadsDataset.exists()):
+            zfsDownloadsDataset.create()
+
+        zfsReleasesDataset = ZFSDataset(ZFS_TREDLY_RELEASES_DATASET, TREDLY_RELEASES_MOUNT)
+        if (not zfsReleasesDataset.exists()):
+            zfsReleasesDataset.create()
+
+        zfsLogDataset = ZFSDataset(ZFS_TREDLY_LOG_DATASET, TREDLY_LOG_MOUNT)
+        if (not zfsLogDataset.exists()):
+            zfsLogDataset.create()
+
+        zfsPartitionsDataset = ZFSDataset(ZFS_TREDLY_PARTITIONS_DATASET, TREDLY_PARTITIONS_MOUNT)
+        if (not zfsLogDataset.exists()):
+            zfsLogDataset.create()
+
+        # TODO: create a default partition
+        # create a default partition under the partitions dataset
+        #if [[ $( zfs list "${ZFS_TREDLY_PARTITIONS_DATASET}/${TREDLY_DEFAULT_PARTITION}" 2> /dev/null | wc -l ) -eq 0 ]]; then
+            #partition_create "${TREDLY_DEFAULT_PARTITION}" "" "" "" "" "true"
+        #fi
+        '''

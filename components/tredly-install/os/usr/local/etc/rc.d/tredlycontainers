@@ -1,0 +1,49 @@
+#!/bin/sh
+
+# PROVIDE: tredly-containers
+# BEFORE:
+# KEYWORD: shutdown
+# REQUIRE: LOGIN nginx
+
+. /etc/rc.subr
+
+name="tredlycontainers"
+rcvar="tredlycontainers_enable"
+
+PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin:/root/bin"
+
+command="/usr/local/sbin/tredly"
+
+start_cmd="${name}_start"
+stop_cmd="${name}_stop"
+restart_cmd="${name}_restart"
+status_cmd="${name}_status"
+extra_commands="status"
+
+load_rc_config $name
+: ${tredlycc}_enable:=no}
+
+tredlycontainers_start()
+{
+    # TODO
+    echo "Start yet to be implemented"
+}
+
+tredlycontainers_stop()
+{
+    yes y | tredly stop containers
+}
+
+tredlycontainers_restart()
+{
+    tredlycontainers_stop
+    tredlycontainers_start
+}
+
+tredlycontainers_status()
+{
+    tredly list containers
+}
+
+load_rc_config $name
+run_rc_command "$1"

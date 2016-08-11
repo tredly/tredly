@@ -21,7 +21,7 @@ show_help "Available Commands:
         $(basename "$0") create container --containerName=mycontainer
         $(basename "$0") create container --ip4_addr=\"bridge0|192.168.0.5/24\"
         $(basename "$0") create container --partition=customer1
-        
+
     partition
     ---------
     Description:
@@ -72,7 +72,6 @@ case "${_SUBCOMMANDS[0]}" in
                     _partition_ram="${value}"
                 ;;
                 ipv4Whitelist)
-                    echo "${value}"
                     _partition_ip4whitelist="${value}"
                 ;;
                 *)
