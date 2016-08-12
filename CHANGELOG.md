@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.1.9]
+#### Added
+- Docs: Added sample tredly.yaml file
+
+#### Fixed
+- Fixed broken links in README.md
+
 ## [1.1.8]
 #### Added
 - Tredly-libs: partition.py class now contains a lot more functionality

@@ -21,7 +21,7 @@ The server technology used to run the containers, built on FreeBSD. It contains 
 
 Validates and manages containers on a Tredly enabled Host
 
-You can find out more information about Tredly at **<http://www.tredly.com>**
+You can find out more information about Tredly in the Documentation section below.
 
 ## Requirements
 

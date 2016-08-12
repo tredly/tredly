@@ -1,0 +1,87 @@
+---
+  # NOTE: This file must be renamed to "tredly.yaml" before being used.
+  container:
+    # which versions of tredly can build this container
+    compatibleWith: "1.1.0"
+    # The name of this container
+    name: "sshonly"
+    # set the group if your container is a member of a containerGroup.
+    # if your container is not a member of a container group, remove this line
+    group: "myGroup"
+    # No auto publish
+    buildOptions:
+      publish: false
+    # set custom dns or leave blank to use default Tredly DNS
+    customDNS: []
+    startOrder: 1
+    # Apply resource limits to this container
+    resourceLimits:
+      maxRam: "1G"
+      maxCpu: "2"
+      maxHdd: "1G"
+    # useful for certain container types, eg PostgreSQL
+    technicalOptions: {}
+    replicate: false
+
+    firewall:
+      # ipv4Whitelist allows you to limit communication to this container at
+      # the firewall
+      ipv4Whitelist: []
+      # which ports to allow in/out of this container
+      allowPorts:
+        udp:
+          out:
+            - 53
+          in: []
+        tcp:
+          out:
+            - 80
+            - 443
+          in:
+            - 80
+            - 443
+    proxy:
+      layer7Proxy:
+      -
+        url: "www.example.com"
+        # enable or disable websockets to this container
+        enableWebsocket: false
+        # Site is HTTPS so set cert
+        cert: partition/sslcerts/www.example.com
+        # Need to upload product pictures so make 10MB
+        maxFileSize: "10m"
+        # Redirect HTTP to HTTPS
+        redirects:
+        -
+          # redirect another url to this url
+          cert: null
+          url: "http://www2.example.com"
+      # no need to proxy through firewall ports above
+      layer4Proxy: false
+    operations:
+      # oncreate commands are run when the container is first created
+      onCreate:
+        # install NginX
+        -
+          type: "installPackage"
+          value: "nginx"
+        # create a directory
+        -
+          type: "exec"
+          value: "mkdir /var/empty"
+        # allow nginx to be started
+        -
+          type: "exec"
+          value: "sysrc nginx_enable=YES"
+        -
+          type: "exec"
+          value: "service nginx onestart"
+      # commands that ar erun when the container is started. Note that this
+      # differs from the above since containers can be started and stopped
+      # multiple times
+      onStart: []
+      # commands that are run when the container is stopped. A container is
+      # always stopped before being destroyed
+      onStop: []
+      # commands that are run when the container is destroyed
+      onDestroy: []
