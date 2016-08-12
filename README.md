@@ -1,7 +1,7 @@
 # Tredly
 
-- Version: v1.1.8
-- Date: August 11 2016
+- Version: v1.1.9
+- Date: August 12 2016
 - [Release notes](https://github.com/tredly/tredly/blob/master/CHANGELOG.md)
 - [GitHub repository](https://github.com/tredly/tredly)
 
@@ -46,15 +46,15 @@ A full FreeBSD and Tredly installation ISO can be downloaded from <https://s3-us
 
 ## Documentation
 
-All documentation can be found under the /doc directory - (https://github.com/tredly/tredly-host/blob/master/doc/)
+All documentation can be found under the /doc directory - (https://github.com/tredly/tredly/blob/master/doc/)
 
 ## Configuration
 
-Tredly can be configured in a number of ways, depending on what you are trying to achieve. We recommend you read (https://github.com/tredly/tredly-host/blob/master/CONFIGURING.md) to understand the options you can configure in Tredly.
+Tredly can be configured in a number of ways, depending on what you are trying to achieve. We recommend you read (https://github.com/tredly/tredly/blob/master/CONFIGURING.md) to understand the options you can configure in Tredly.
 
 ## Usage
 
-Tredly incorporates a number of commands for manipulating partitions and their containers. To see a full list of these commands, read (https://github.com/tredly/tredly-host/blob/master/doc/commands.md)
+Tredly incorporates a number of commands for manipulating partitions and their containers. To see a full list of these commands, read (https://github.com/tredly/tredly/blob/master/doc/commands.md)
 
 ## Container examples
 
@@ -69,7 +69,7 @@ Tredly already has a number of extensions:
 
 ## Contributing
 
-We encourage you to contribute to Tredly. Please check out the [Contributing documentation](https://github.com/tredly/tredly-host/blob/master/CONTRIBUTING.md) for guidelines about how to get involved.
+We encourage you to contribute to Tredly. Please check out the [Contributing documentation](https://github.com/tredly/tredly/blob/master/CONTRIBUTING.md) for guidelines about how to get involved.
 
 ### Technical Documentation
 
