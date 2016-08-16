@@ -2,6 +2,7 @@
 
 # prints out a nicely formatted menu for the user to configure their system
 function tredlyHostMenuConfig() {
+    local _tredlyVersion="${1}"
 
     local _userSelection _userChange
 
@@ -12,7 +13,7 @@ function tredlyHostMenuConfig() {
     while [[ "${continue}" == "true" ]]; do
         clear
         echo -e "${_colourMagenta}"
-        e_header "Tredly v1.1 Installer"
+        e_header "Tredly v${_tredlyVersion} Installer"
 
         echo -en "${_colourDefault}"
 

@@ -12,13 +12,13 @@ show_help "Available Commands:
         to replace was found, the new container is created anyway.
 
     Options:
-        --path=          Provide an alternate path to a Tredlyfile
+        --location=          Provide an alternate path to a Tredlyfile
         --containerName= Override the container name
         --ip4_addr=      Manually specify the networking details for the new
                          container. Format: <interface>|<ip4 address>/<cidr>
 
     Examples:
-        $(basename "$0") replace container customer1 --path=/path/to/container
+        $(basename "$0") replace container customer1 --location=/path/to/container
 "
 
 case "${_SUBCOMMANDS[0]}" in

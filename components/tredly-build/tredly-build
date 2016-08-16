@@ -27,7 +27,7 @@ else:
     sys.path.insert(0, builtins.scriptDirectory + "/../tredly-libs/python-common")
     sys.path.insert(0, builtins.scriptDirectory + "/tests")
     builtins.tredlyConfDirectory = builtins.scriptDirectory + "/../tredly/conf"
-    builtins.tredlyJsonDirectory = builtins.scriptDirectory + "/json"
+    builtins.tredlyJsonDirectory = builtins.scriptDirectory + "/../../json"
 
 # import modules
 from objects.config.configfile import ConfigFile

@@ -882,7 +882,8 @@ class Container:
 
                 # if nothing is using them then delete
                 if (len(zfsUrlCerts) == 0) and (len(zfsRedirectUrlCerts) == 0):
-                    pathToCertDir = NGINX_SSL_DIR + '/' + self.partitionName + '/' + cert
+                    sslPartitionDir = NGINX_SSL_DIR + '/' + self.partitionName
+                    pathToCertDir = sslPartitionDir + '/' + cert
 
                     # make sure ther are alphanumeric chars in the path so we aren't deleting /
                     if (re.search('[a-zA-Z]', pathToCertDir)):
@@ -893,10 +894,12 @@ class Container:
                         except IOError:
                             returnCode = (returnCode and False)
 
-                    # check if the directory is now empty, and if so, clean it up
-                    if (len(os.listdir(NGINX_SSL_DIR + '/' + self.partitionName)) == 0):
-                        # delete the directory
-                        shutil.rmtree(NGINX_SSL_DIR + '/' + self.partitionName, ignore_errors=True)
+                    # make sure the ssl directory exists before attempting to delete it
+                    if (os.path.isdir(sslPartitionDir)):
+                        # check if the directory is now empty, and if so, clean it up
+                        if (len(os.listdir(sslPartitionDir)) == 0):
+                            # delete the directory
+                            shutil.rmtree(sslPartitionDir, ignore_errors=True)
 
             if (returnCode):
                 e_success("Success")

@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# tredly versioning
+declare TREDLY_VERSION="1.2.0"
+declare TREDLY_VERSION_DATE="August 16 2016"
+
 # success/failure return codes
 declare E_SUCCESS=0
 declare E_ERROR=1

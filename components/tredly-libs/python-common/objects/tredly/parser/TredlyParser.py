@@ -33,14 +33,15 @@ class TredlyParser:
     #
     # Return: True if valid, False otherwise
     def validate(self):
-
-        # make sure the tredlyfile matches this version
-        tredlyBuildVersion = VERSION_NUMBER.split('.')
-        compatibleWith = self.json['container']['compatibleWith'].split('.')
-        if (tredlyBuildVersion[0] != compatibleWith[0]) or (tredlyBuildVersion[1] != compatibleWith[1]):
-            e_error("Tredlyfile version " + self.json['container']['compatibleWith'] + " is incompatible with tredly-build version " + tredlyBuildVersion[0] + '.' + tredlyBuildVersion[1] + '.x')
-            e_error("Please update your Tredlyfile to match the version of this release (" + VERSION_NUMBER + ").")
-            return False
+        # if restrictTo is set then check against this version
+        if ('restrictTo' in self.json['container']) and (self.json['container']['restrictTo'] is not None) and (len(self.json['container']['restrictTo']) > 0):
+            # make sure the tredlyfile matches this version
+            tredlyVersion = VERSION_NUMBER.split('.')
+            restrictTo = self.json['container']['restrictTo'].split('.')
+            if (tredlyVersion[0] != restrictTo[0]) or (tredlyVersion[1] != restrictTo[1]):
+                e_error("Tredlyfile version " + self.json['container']['restrictTo'] + " is incompatible with tredly version " + tredlyVersion[0] + '.' + tredlyVersion[1] + '.x')
+                e_error("Please update your Tredlyfile to match the version of this release (" + VERSION_NUMBER + ").")
+                return False
 
         # open the schema and extend with the defaults
         with open(os.path.abspath(os.path.join(os.path.dirname( __file__ ), builtins.tredlyJsonDirectory + '/tredlyfile.schema.json'))) as jsonSchema:

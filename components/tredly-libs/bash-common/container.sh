@@ -9,14 +9,14 @@
 function container_run_cmd() {
     local _uuid="${1}"
     local _command="${2}"
-    
+
     # make sure the uuid exists
     if ! container_exists "${_uuid}"; then
         exit_with_error "No container with uuid ${_uuid} found"
     fi
     # run the command
     jexec trd-${_uuid} sh -c "${_command}"
-    
+
     return $?
 }
 
@@ -640,7 +640,7 @@ function container_create() {
         fi
         _i=$(( _i + 1))
     done
-    
+
     for _cert in ${_CONF_TREDLYFILE_URLREDIRECTCERT[@]}; do
         if [[ -n "${_cert}" ]]; then
 
@@ -900,7 +900,7 @@ function container_create() {
             zfs_set_property "${_container_dataset}" "${ZFS_PROP_ROOT}:${key}" "${value}"
         done
     fi
-    
+
     ## PERSISTENT STORAGE
     ## Check for persistent storage in the tredlyfile and allow zfs within the container if necessary
     if [[ -n "${_CONF_TREDLYFILE[persistentStorageUUID]}" ]]; then
@@ -1374,7 +1374,7 @@ function container_create() {
                 if [[ "${_redirectUrlCert}" == 'null' ]]; then
                     _redirectUrlCert=''
                 fi
-                
+
                 # add the redirection
                 nginx_add_redirect_url "${_redirectUrl}" "${_redirectToProto}://${_url}" "${_redirectUrlCert}" "${_partitionName}"
 
@@ -1956,8 +1956,8 @@ function destroy_container() {
 }
 
 # updates a container - create new one, then destroy old one
-# new container containerName always comes from --path
-# old container containerName comes from --uuid or --containerName or --path
+# new container containerName always comes from --location
+# old container containerName comes from --uuid or --containerName or --location
 function container_replace() {
     local _old_container_uuid _new_container_name _uuid _CONTAINER_CWD _header _old_container_exists
 
@@ -1986,7 +1986,7 @@ function container_replace() {
 
     # need to specify path
     if [[ -z "${_FLAGS[path]}" ]]; then
-        exit_with_error "Please specify the path of the new container with --path="
+        exit_with_error "Please specify the path of the new container with --location="
     fi
 
     # end pre flight checks

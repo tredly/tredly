@@ -2,7 +2,7 @@
   # NOTE: This file must be renamed to "tredly.yaml" before being used.
   container:
     # which versions of tredly can build this container
-    compatibleWith: "1.1.0"
+    restrictTo: ""
     # The name of this container
     name: "sshonly"
     # set the group if your container is a member of a containerGroup.

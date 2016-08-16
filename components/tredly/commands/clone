@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+# commands require running as root
+cmn_assert_running_as_root
+
+show_help "
+    Description:
+        Clones a Git repository to the given path
+
+    Options:
+        -b, --branch        The branch to clone. If blank, master will be cloned.
+
+    Examples:
+        $(basename "$0") clone container https://github.com/tredly/container-magento.git /tmp/magento -b develop
+"
+
+tredly-host clone ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+
+exit $?

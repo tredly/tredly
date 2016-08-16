@@ -11,13 +11,13 @@ from includes.output import *
 class TredlyFile:
     # constructor
     def __init__(self, filePath):
-        
+
         self.filePath = filePath
         self.__getParser()
-        
+
         # parse and load
         self.json = self.parser.read()
-        
+
         # set the working directory
         self.fileLocation = os.path.dirname(filePath)
 
@@ -69,23 +69,23 @@ class TredlyFile:
 
     # Action: writes a tredlyfile back to the given filepath
     #
-    # Pre: 
+    # Pre:
     # Post: filepath has been written to
     #
     # Params: filepath - the path of the file to write
     #
-    # Return: 
+    # Return:
     def write(self, filepath):
         f = open(filepath, 'w+')
         f.write(str(self))
         f.close()
-        
+
     # Action: convert this object to a string
     #
-    # Pre: 
-    # Post: 
+    # Pre:
+    # Post:
     #
-    # Params: 
+    # Params:
     #
     # Return: string of this object in json format
     def __str__(self):

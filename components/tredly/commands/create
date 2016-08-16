@@ -10,7 +10,7 @@ show_help "Available Commands:
         Creates a container from the Tredlyfile in the current directory.
 
     Options:
-        --path=          Provide an alternate path to a Tredlyfile
+        --location=          Provide an alternate path to a Tredlyfile
         --containerName= Override the container name
         --partition=     Place this container within the given partition
         --ip4_addr=      Manually specify the networking details for this

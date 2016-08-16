@@ -138,7 +138,7 @@ fi
 # check if we are doing an unattended installation or not
 if [[ "${_CONF_COMMON[unattendedInstall]}" != "yes" ]]; then
     # run the menu
-    tredlyHostMenuConfig
+    tredlyHostMenuConfig "${TREDLY_VERSION}"
 fi
 
 # extract the net and cidr from the container subnet we are using
@@ -613,6 +613,39 @@ fi
 if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
     read -p "press any key to continue" confirm
 fi
+
+##########
+
+# Install tredly-validate
+e_note "Installing Tredly-Validate"
+
+${_DIR}/../tredly-validate/install.sh install clean
+if [[ $? -eq 0 ]]; then
+    e_success "Success"
+else
+    e_error "Failed"
+fi
+
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
+
+##########
+
+# Install tredly-parse
+e_note "Installing Tredly-Parse"
+
+${_DIR}/../tredly-parse/install.sh install clean
+if [[ $? -eq 0 ]]; then
+    e_success "Success"
+else
+    e_error "Failed"
+fi
+
+if [[ "${_TREDLYINSTALLDEBUG}" == 'true' ]]; then
+    read -p "press any key to continue" confirm
+fi
+
 ##########
 
 # if the user wanted to install the api then go ahead

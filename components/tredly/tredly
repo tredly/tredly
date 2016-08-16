@@ -17,10 +17,6 @@ declare _COMMAND=""
 declare -a _SUBCOMMANDS
 declare -a _ENTIREFLAGS
 
-# versioning
-_VERSIONNUMBER="1.1.9"
-_VERSIONDATE="August 12 2016"
-
 _SHOW_HELP=false
 _ARGS=($@)
 _DEBUG=false
@@ -58,6 +54,10 @@ fi
 
 # load the libs
 for f in ${_TREDLY_DIR_LIB}/*.sh; do source $f; done
+
+# versioning
+_VERSIONNUMBER="${TREDLY_VERSION}"
+_VERSIONDATE="${TREDLY_VERSION_DATE}"
 
 ## Ensure debugging is off to start with
 disable_debugging

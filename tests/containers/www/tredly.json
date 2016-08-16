@@ -26,7 +26,7 @@
             "ipv4Whitelist": []
         },
         "startOrder": 1,
-        "compatibleWith": "1.1.0",
+        "restrictTo": "",
         "technicalOptions": {},
         "customDNS": [
             "8.8.8.8",

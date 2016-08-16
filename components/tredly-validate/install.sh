@@ -3,7 +3,7 @@
 PREFIX="/usr/local"
 MAN=
 BINDIR="${PREFIX}/sbin"
-LIBDIR="${PREFIX}/lib/tredly-build"
+LIBDIR="${PREFIX}/lib/tredly-validate"
 CONFDIR="${PREFIX}/etc/tredly"
 ACTIONSDIR="${LIBDIR}/actions"
 INSTALL="/usr/bin/install"
@@ -11,16 +11,16 @@ MKDIR="mkdir"
 RM="rm"
 BINMODE="500"
 
-SCRIPTS="tredly-build"
+SCRIPTS="tredly-validate"
 SCRIPTSDIR="${PREFIX}/BINDIR"
 
 function show_help() {
-    echo "Tredly-Build installer"
+    echo "Tredly-Validate installer"
     echo ""
     echo "Usage:"
-    echo "    `basename "$0"` install: install Tredly-Build"
-    echo "    `basename "$0"` uninstall: uninstall Tredly-Build"
-    echo "    `basename "$0"` install clean: remove all previously installed files and install Tredly-Build"
+    echo "    `basename "$0"` install: install Tredly-Validate"
+    echo "    `basename "$0"` uninstall: uninstall Tredly-Validate"
+    echo "    `basename "$0"` install clean: remove all previously installed files and install Tredly-Validate"
 }
 
 # cleans/uninstalls tredly
@@ -52,7 +52,7 @@ FILESSOURCE=$( get_files_source )
 # loop over the args, looking for clean first
 for arg in "$@"; do
     if [[ "${arg}" == "clean" ]]; then
-        echo "Cleaning Tredly-Build install"
+        echo "Cleaning Tredly-Validate install"
         clean
     fi
 done
@@ -61,7 +61,7 @@ done
 for arg in "$@"; do
     case "${arg}" in
         install)
-            echo "Installing Tredly-Build..."
+            echo "Installing Tredly-Validate..."
 
             ${MKDIR} -p "${BINDIR}"
             ${MKDIR} -p "${LIBDIR}"
@@ -73,13 +73,13 @@ for arg in "$@"; do
 
             cp "${FILESSOURCE}/../../json/tredlyfile.schema.json" "${CONFDIR}/json/"
 
-            echo "Tredly-Build installed."
+            echo "Tredly-Validate installed."
             ;;
         uninstall)
-            echo "Uninstalling Tredly-Build..."
+            echo "Uninstalling Tredly-Validate..."
             # run clean to remove the files
             clean
-            echo "Tredly-Build Uninstalled."
+            echo "Tredly-Validate Uninstalled."
             ;;
         clean)
             # do nothing, this is just here to prevent clean being handled as *

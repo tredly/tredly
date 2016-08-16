@@ -2,6 +2,25 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.2.0]
+#### Fixed
+- Tredly-build: fixed an issue where destroying a container would fail if the partition's layer 7 SSL directory does not exist.
+
+#### Added
+- Tredly-validate - a new component to validate Tredlyfiles. This has been separated from tredly-build because tredly-build requires that tredly-host.conf be validated before a container can be validated.
+- Tredly-parse - a new component to replace given strings in a Tredlyfile.
+- Tredly-host - added ability to clone a git repo; this is a simple wrapper to Git.
+
+#### Changed
+- Tredly-core: tredly validate container now correctly returns the component's exit code.
+- JSON schema: Changed the location of the JSON schema as both build and validate rely on this now.
+- Tredlyfile: "compatibleWith" changed to "restrictTo" and can now be null or an empty string.
+- Tredly-core/Tredly-Install: bash versioning is now set in the defines.sh file instead of in individual scripts.
+
+#### Removed
+- Tredly-host-bash: Removed deprecated Bash tredly-host component. This has not been installed for many versions & was replaced by the python version quite some time ago.
+- Tredly-build: Legacy "flat file" Tredlyfile format is no longer supported.
+
 ## [1.1.9]
 #### Added
 - Docs: Added sample tredly.yaml file
@@ -300,6 +319,18 @@ Only run the `onCreate` commands and create the `onStop` script on first boot of
 - Single codebase (i.e. removal of seperate tredly-host and tredly-build repositories)
 - Framework now written in Python 3 (many supporting libraries are still in written in BASH)
 
+[1.2.0]: https://github.com/tredly/tredly/compare/v1.1.9...v1.2.0
+[1.1.9]: https://github.com/tredly/tredly/compare/v1.1.8...v1.1.9
+[1.1.8]: https://github.com/tredly/tredly/compare/v1.1.7...v1.1.8
+[1.1.7]: https://github.com/tredly/tredly/compare/v1.1.6...v1.1.7
+[1.1.6]: https://github.com/tredly/tredly/compare/v1.1.5...v1.1.6
+[1.1.5]: https://github.com/tredly/tredly/compare/v1.1.4...v1.1.5
+[1.1.4]: https://github.com/tredly/tredly/compare/v1.1.3...v1.1.4
+[1.1.3]: https://github.com/tredly/tredly/compare/v1.1.2...v1.1.3
+[1.1.2]: https://github.com/tredly/tredly/compare/v1.1.1...v1.1.2
+[1.1.1]: https://github.com/tredly/tredly/compare/v1.1.0...v1.1.1
+[1.1.0]: https://github.com/tredly/tredly/compare/v1.0.3...v1.1.0
+[1.0.3]: https://github.com/tredly/tredly/compare/v1.0.2...v1.0.3
 [1.0.3]: https://github.com/tredly/tredly/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/tredly/tredly/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/tredly/tredly/compare/v1.0.0...v1.0.1

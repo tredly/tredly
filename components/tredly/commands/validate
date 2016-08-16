@@ -7,14 +7,14 @@ show_help "Available Commands:
     container
     ---------
     Description:
-        Validates a Tredlyfile.
+        Validates a Container's Tredlyfile.
 
     Options:
-        --path=         Provide an alternate path to a Tredlyfile
+        --location=         Provide an alternate path to a Tredlyfile
 
     Examples:
         $(basename "$0") validate container
-        $(basename "$0") validate container --path=/path/to/container
+        $(basename "$0") validate container --location=/path/to/container
 "
 
 case "${_SUBCOMMANDS[0]}" in
@@ -24,8 +24,10 @@ case "${_SUBCOMMANDS[0]}" in
             exit_with_error "Too many arguments received."
         fi
 
-        # use tredly build to validate
-        tredly-build validate container ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+        # use tredly validate to validate
+        tredly-validate validate ${_SUBCOMMANDS[@]} ${_ENTIREFLAGS[@]}
+
+        exit $?
     ;;
     *)
         exit_with_error "Unknown validate command '${_SUBCOMMANDS[0]}'"
