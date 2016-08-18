@@ -5,9 +5,6 @@ import builtins
 import argparse
 import os.path
 import sys
-import urllib.request
-import tarfile
-import ssl
 import importlib
 
 # set the path to the directory containing this script
@@ -15,7 +12,6 @@ builtins.scriptDirectory = os.path.dirname(os.path.realpath(__file__))
 
 # work out whether this is an installed or non installed version
 # and include this scripts directories in the path
-
 if (builtins.scriptDirectory == "/usr/local/sbin"):
     sys.path.insert(0, "/usr/local/lib/tredly-validate")
     sys.path.insert(0, "/usr/local/lib/tredly/python-common")
@@ -30,10 +26,6 @@ else:
     builtins.tredlyJsonDirectory = builtins.scriptDirectory + "/../../json"
 
 # import modules
-from objects.config.configfile import ConfigFile
-from objects.zfs.zfs import ZFSDataset
-
-from objects.tredly.tredlyhost import *
 
 # include global modules
 from includes.defines import *
@@ -71,9 +63,6 @@ if (args.version):
     print(SCRIPTNAME + ": version " + VERSION_NUMBER + " (built " + VERSION_DATE + ")")
     exit(0)
 
-# get a tredlyhost object
-tredlyHost = TredlyHost()
-
 # enable debug mode if requested
 if (args.debug):
     DEBUG = True
@@ -105,35 +94,8 @@ else:
 # find the tredlyfile
 tredlyFilePath = findTredlyFile(actionArgs['path'])
 
-# make sure we received a tredly file path if we are creating or replacing
-if (tredlyFilePath is None) and ((args.action == "create") or (args.action == "replace")):
-    # error and exit
-    e_error("Could not find a Tredly file at " + actionArgs['path'])
-    exit(1)
-else:
-    # tredlyfile found, so assign actionargs path
-    actionArgs['path'] = tredlyFilePath
-
-# make sure the base ZFS datasets are present
-zfsTredly = ZFSDataset(ZFS_TREDLY_DATASET)
-if (not zfsTredly.exists()):
-    e_error("Dataset " + ZFS_TREDLY_DATASET + " does not exist. Please run tredly init.")
-    exit(1)
-
-zfsReleases = ZFSDataset(ZFS_TREDLY_RELEASES_DATASET)
-if (not zfsReleases.exists()):
-    e_error("Dataset " + ZFS_TREDLY_RELEASES_DATASET + " does not exist. Please run tredly init.")
-    exit(1)
-
-zfsPartitions = ZFSDataset(ZFS_TREDLY_PARTITIONS_DATASET)
-if (not zfsPartitions.exists()):
-    e_error("Dataset " + ZFS_TREDLY_PARTITIONS_DATASET + " does not exist. Please run tredly init.")
-    exit(1)
-
-zfsDefaultPartition = ZFSDataset(ZFS_TREDLY_PARTITIONS_DATASET + '/' + TREDLY_DEFAULT_PARTITION)
-if (not zfsDefaultPartition.exists()):
-    e_error("Dataset " + ZFS_TREDLY_PARTITIONS_DATASET + '/' + TREDLY_DEFAULT_PARTITION + " does not exist. Please run tredly init.")
-    exit(1)
+# assign actionargs path
+actionArgs['path'] = tredlyFilePath
 
 # try loading the action module
 try:

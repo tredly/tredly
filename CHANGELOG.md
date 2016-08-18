@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.2.1]
+#### Changed
+- Tredly-validate: removed requirement for ZFS datasets to exist before validate runs.
+- Tredly-validate: Removed unnecessary imported packages from the validate action.
+- README.md: Changed ISO location
+
 ## [1.2.0]
 #### Fixed
 - Tredly-build: fixed an issue where destroying a container would fail if the partition's layer 7 SSL directory does not exist.
@@ -319,6 +325,7 @@ Only run the `onCreate` commands and create the `onStop` script on first boot of
 - Single codebase (i.e. removal of seperate tredly-host and tredly-build repositories)
 - Framework now written in Python 3 (many supporting libraries are still in written in BASH)
 
+[1.2.1]: https://github.com/tredly/tredly/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/tredly/tredly/compare/v1.1.9...v1.2.0
 [1.1.9]: https://github.com/tredly/tredly/compare/v1.1.8...v1.1.9
 [1.1.8]: https://github.com/tredly/tredly/compare/v1.1.7...v1.1.8

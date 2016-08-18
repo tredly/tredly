@@ -1,7 +1,7 @@
 # Tredly
 
-- Version: v1.2.0
-- Date: August 16 2016
+- Version: v1.2.1
+- Date: August 18 2016
 - [Release notes](https://github.com/tredly/tredly/blob/master/CHANGELOG.md)
 - [GitHub repository](https://github.com/tredly/tredly)
 
@@ -42,7 +42,7 @@ To install Tredly, your server must be running **FreeBSD 10.3 (or above) as Root
 
 ### Via ISO
 
-A full FreeBSD and Tredly installation ISO can be downloaded from <https://s3-us-west-2.amazonaws.com/tredly-isos/Tredly-1.1-RELEASE-amd64.iso>
+A full FreeBSD 10.x and Tredly installation ISO can be downloaded from <https://s3-us-west-2.amazonaws.com/tredly-isos/Tredly-FreeBSD-10.X-RELEASE-amd64.iso>
 
 ## Documentation
 

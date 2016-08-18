@@ -1,6 +1,6 @@
 # Tredly Installation
 
-Use this guide if you want to install Tredly on an existing FreeBSD host, or a fresh installation. Note that we recommend you use the official Tredly FreeBSD ISO as it comes tested and preconfigured. A link can be found in README.md.
+Use this guide if you want to install Tredly on an existing FreeBSD host, or a fresh FreeBSD installation. Note that we recommend you use the official Tredly FreeBSD ISO as it comes tested and preconfigured. A link can be found in README.md.
 
 Tredly contains a configuration file that allows you to modify installation options. By default Tredly will ask you to set some/confirm certain information that it needs to complete the install. The configuration file also allows you to run an unattended install of Tredly, which is especially useful for larger environments where PXE boot is used.
 
